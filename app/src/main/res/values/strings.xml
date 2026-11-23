@@ -28,4 +28,26 @@
     <string name="inventory_duplicate_barcode">Barcode sudah digunakan oleh produk lain.</string>
     <string name="inventory_missing_product">Barang sudah tidak tersedia. Kembali ke katalog.</string>
     <string name="inventory_invalid_storage">Barang belum tersimpan. Coba lagi.</string>
+    <string name="cashier_open">Kasir</string>
+    <string name="cashier_title">Transaksi kasir</string>
+    <string name="cashier_back">Kembali</string>
+    <string name="cashier_search">Cari produk</string>
+    <string name="cashier_search_name">Nama produk</string>
+    <string name="cashier_close_picker">Tutup</string>
+    <string name="cashier_no_products">Belum ada produk di inventaris.</string>
+    <string name="cashier_no_matches">Tidak ada produk dengan nama itu.</string>
+    <string name="cashier_cart">Keranjang</string>
+    <string name="cashier_cart_empty">Pilih produk dari inventaris untuk mengisi keranjang.</string>
+    <string name="cashier_count">%1$d produk · %2$d pcs</string>
+    <string name="cashier_stock">Stok %1$d pcs</string>
+    <string name="cashier_unit_price">Rp %1$s / pcs</string>
+    <string name="cashier_amount">Rp %1$s</string>
+    <string name="cashier_subtotal">Subtotal</string>
+    <string name="cashier_total">Total belanja</string>
+    <string name="cashier_add">Tambah</string>
+    <string name="cashier_add_product">Tambah %1$s ke keranjang</string>
+    <string name="cashier_decrease">Kurangi jumlah %1$s</string>
+    <string name="cashier_increase">Tambah jumlah %1$s</string>
+    <string name="cashier_remove">Hapus</string>
+    <string name="cashier_remove_product">Hapus %1$s dari keranjang</string>
 </resources>

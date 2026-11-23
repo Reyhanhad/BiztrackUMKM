@@ -42,7 +42,7 @@ class InventoryCheckpointTest {
 
     @Before fun openCatalog() {
         openDatabase()
-        compose.setContent { BiztrackUMKMTheme { model.value?.let { InventoryScreen(it) } } }
+        compose.setContent { BiztrackUMKMTheme { model.value?.let { InventoryScreen(it, onOpenCashier = {}) } } }
     }
 
     @After fun cleanUpDatabase() {
