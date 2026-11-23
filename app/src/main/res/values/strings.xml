@@ -1,3 +1,27 @@
 <resources>
-    <string name="app_name">BiztrackUMKM</string>
+    <string name="app_name">BizTrack UMKM</string>
+    <string name="inventory_title">Katalog &amp; stok</string>
+    <string name="inventory_subtitle">Pantau stok dan batas minimum barang.</string>
+    <string name="inventory_empty_title">Belum ada produk</string>
+    <string name="inventory_empty_hint">Tambah barang untuk mulai mengisi katalog.</string>
+    <string name="inventory_add">Tambah barang</string>
+    <string name="inventory_add_hint">Isi data barang dan stok awal.</string>
+    <string name="inventory_back">Kembali</string>
+    <string name="inventory_save">Simpan barang</string>
+    <string name="inventory_saving">Menyimpan…</string>
+    <string name="inventory_name">Nama produk</string>
+    <string name="inventory_price">Harga jual (Rp)</string>
+    <string name="inventory_initial_stock">Stok awal</string>
+    <string name="inventory_stock_current">Stok saat ini</string>
+    <string name="inventory_minimum_short">Batas minimum</string>
+    <string name="inventory_minimum_stock">Batas minimum stok</string>
+    <string name="inventory_barcode">Barcode (opsional)</string>
+    <string name="inventory_price_display">Rp%1$s</string>
+    <string name="inventory_barcode_display">Barcode: %1$s</string>
+    <string name="inventory_invalid_name">Isi nama produk.</string>
+    <string name="inventory_invalid_price">Masukkan harga jual dalam rupiah utuh, lebih dari nol.</string>
+    <string name="inventory_invalid_stock">Masukkan stok awal berupa bilangan bulat, nol atau lebih.</string>
+    <string name="inventory_invalid_minimum">Masukkan batas minimum berupa bilangan bulat, nol atau lebih.</string>
+    <string name="inventory_duplicate_barcode">Barcode sudah digunakan oleh produk lain.</string>
+    <string name="inventory_invalid_storage">Barang belum tersimpan. Coba lagi.</string>
 </resources>
