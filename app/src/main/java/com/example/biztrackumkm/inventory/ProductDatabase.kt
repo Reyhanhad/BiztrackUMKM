@@ -11,6 +11,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 /** Harga dalam rupiah utuh; barcode kosong disimpan sebagai null. */
@@ -32,6 +33,9 @@ internal interface ProductDao {
     /** Produk baru memakai ID otomatis. Nilai -1 berarti barcode sudah terdaftar. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(product: Product): Long
+
+    @Update
+    suspend fun update(product: Product): Int
 }
 
 @Database(entities = [Product::class], version = 1)

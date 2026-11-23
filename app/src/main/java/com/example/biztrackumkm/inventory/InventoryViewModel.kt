@@ -1,5 +1,6 @@
 package com.example.biztrackumkm.inventory
 
+import android.database.sqlite.SQLiteConstraintException
 import android.database.sqlite.SQLiteException
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -8,7 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-internal data class NewProductForm(
+internal data class ProductForm(
     val name: String = "",
     val price: String = "",
     val stock: String = "",
@@ -16,25 +17,38 @@ internal data class NewProductForm(
     val barcode: String = "",
     val problem: ProductProblem? = null,
     val saving: Boolean = false,
+    val productId: Long? = null,
 )
 
-internal enum class ProductProblem { Name, Price, Stock, MinimumStock, DuplicateBarcode, Storage }
+internal enum class ProductProblem { Name, Price, Stock, MinimumStock, DuplicateBarcode, NotFound, Storage }
 
 internal class InventoryViewModel(private val dao: ProductDao) : ViewModel() {
     val products = dao.observeProducts()
 
-    private val _form = MutableStateFlow<NewProductForm?>(null)
+    private val _form = MutableStateFlow<ProductForm?>(null)
     val form = _form.asStateFlow()
 
     fun openForm() {
-        if (_form.value == null) _form.value = NewProductForm()
+        if (_form.value == null) _form.value = ProductForm()
+    }
+
+    fun openEditForm(product: Product) {
+        if (_form.value != null) return
+        _form.value = ProductForm(
+            name = product.name,
+            price = product.priceRupiah.toString(),
+            stock = product.stock.toString(),
+            minimumStock = product.minimumStock.toString(),
+            barcode = product.barcode.orEmpty(),
+            productId = product.id,
+        )
     }
 
     fun closeForm() {
         if (_form.value?.saving != true) _form.value = null
     }
 
-    fun changeForm(change: NewProductForm.() -> NewProductForm) {
+    fun changeForm(change: ProductForm.() -> ProductForm) {
         val current = _form.value ?: return
         if (!current.saving) _form.value = current.change().copy(problem = null)
     }
@@ -59,17 +73,28 @@ internal class InventoryViewModel(private val dao: ProductDao) : ViewModel() {
         }
 
         val product = Product(
-            name, checkNotNull(price), checkNotNull(stock), checkNotNull(minimumStock),
-            current.barcode.trim().ifEmpty { null },
+            name = name,
+            priceRupiah = checkNotNull(price),
+            stock = checkNotNull(stock),
+            minimumStock = checkNotNull(minimumStock),
+            barcode = current.barcode.trim().ifEmpty { null },
+            id = current.productId ?: 0,
         )
         _form.value = current.copy(problem = null, saving = true)
         viewModelScope.launch {
-            _form.value = try {
-                if (dao.insert(product) == -1L) current.copy(problem = ProductProblem.DuplicateBarcode) else null
+            val saveProblem = try {
+                if (current.productId == null) {
+                    if (dao.insert(product) == -1L) ProductProblem.DuplicateBarcode else null
+                } else {
+                    if (dao.update(product) == 0) ProductProblem.NotFound else null
+                }
+            } catch (_: SQLiteConstraintException) {
+                ProductProblem.DuplicateBarcode
             } catch (error: SQLiteException) {
                 Log.e("Inventory", "Gagal menyimpan produk", error)
-                current.copy(problem = ProductProblem.Storage)
+                ProductProblem.Storage
             }
+            _form.value = saveProblem?.let { current.copy(problem = it) }
         }
     }
 }
