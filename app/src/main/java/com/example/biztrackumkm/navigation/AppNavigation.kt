@@ -7,23 +7,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-
 import com.example.biztrackumkm.auth.AuthScreenState
 import com.example.biztrackumkm.auth.AuthViewModel
 import com.example.biztrackumkm.auth.LoginScreen
 import com.example.biztrackumkm.auth.RegisterScreen
+import com.example.biztrackumkm.cashier.CashierScreen
 import com.example.biztrackumkm.inventory.InventoryScreen
 import com.example.biztrackumkm.inventory.InventoryViewModel
 
@@ -60,10 +59,16 @@ internal fun AppNavigation(
         }
 
         AuthScreenState.Authenticated -> {
-            InventoryWithLogout(
-                inventoryViewModel = inventoryViewModel,
-                onLogout = authViewModel::logout
-            )
+            var cashierOpen by rememberSaveable { mutableStateOf(false) }
+            if (cashierOpen) {
+                CashierScreen(inventoryViewModel.products, onBack = { cashierOpen = false })
+            } else {
+                InventoryScreen(
+                    inventoryViewModel,
+                    onOpenCashier = { cashierOpen = true },
+                    onLogout = authViewModel::logout,
+                )
+            }
         }
     }
 }
@@ -94,36 +99,6 @@ private fun LoadingScreen(
                     Text("Coba Lagi")
                 }
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun InventoryWithLogout(
-    inventoryViewModel: InventoryViewModel,
-    onLogout: () -> Unit
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text("BizTrack UMKM")
-                },
-                actions = {
-                    TextButton(onClick = onLogout) {
-                        Text("Logout")
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            InventoryScreen(inventoryViewModel)
         }
     }
 }

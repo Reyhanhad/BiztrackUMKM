@@ -48,7 +48,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun InventoryScreen(viewModel: InventoryViewModel) {
+internal fun InventoryScreen(viewModel: InventoryViewModel, onOpenCashier: () -> Unit, onLogout: () -> Unit) {
     val form by viewModel.form.collectAsStateWithLifecycle()
     val current = form
     val products by viewModel.products.collectAsStateWithLifecycle<List<Product>?>(initialValue = null)
@@ -69,6 +69,16 @@ internal fun InventoryScreen(viewModel: InventoryViewModel) {
                     if (current != null) {
                         TextButton(onClick = viewModel::closeForm, enabled = !current.saving) {
                             Text(stringResource(R.string.inventory_back))
+                        }
+                    }
+                },
+                actions = {
+                    if (current == null) {
+                        TextButton(onClick = onOpenCashier) {
+                            Text(stringResource(R.string.cashier_open))
+                        }
+                        TextButton(onClick = onLogout) {
+                            Text(stringResource(R.string.owner_logout))
                         }
                     }
                 },
