@@ -6,6 +6,9 @@
     <string name="inventory_empty_hint">Tambah barang untuk mulai mengisi katalog.</string>
     <string name="inventory_add">Tambah barang</string>
     <string name="inventory_add_hint">Isi data barang dan stok awal.</string>
+    <string name="inventory_edit">Ubah barang</string>
+    <string name="inventory_edit_action">Ubah</string>
+    <string name="inventory_edit_hint">Perbarui data barang dan jumlah stok saat ini.</string>
     <string name="inventory_back">Kembali</string>
     <string name="inventory_save">Simpan barang</string>
     <string name="inventory_saving">Menyimpan…</string>
@@ -20,8 +23,9 @@
     <string name="inventory_barcode_display">Barcode: %1$s</string>
     <string name="inventory_invalid_name">Isi nama produk.</string>
     <string name="inventory_invalid_price">Masukkan harga jual dalam rupiah utuh, lebih dari nol.</string>
-    <string name="inventory_invalid_stock">Masukkan stok awal berupa bilangan bulat, nol atau lebih.</string>
+    <string name="inventory_invalid_stock">Masukkan stok berupa bilangan bulat, nol atau lebih.</string>
     <string name="inventory_invalid_minimum">Masukkan batas minimum berupa bilangan bulat, nol atau lebih.</string>
     <string name="inventory_duplicate_barcode">Barcode sudah digunakan oleh produk lain.</string>
+    <string name="inventory_missing_product">Barang sudah tidak tersedia. Kembali ke katalog.</string>
     <string name="inventory_invalid_storage">Barang belum tersimpan. Coba lagi.</string>
 </resources>

@@ -58,7 +58,12 @@ internal fun InventoryScreen(viewModel: InventoryViewModel) {
         topBar = {
             TopAppBar(
                 title = {
-                    Text(stringResource(if (current == null) R.string.app_name else R.string.inventory_add))
+                    val title = when {
+                        current == null -> R.string.app_name
+                        current.productId == null -> R.string.inventory_add
+                        else -> R.string.inventory_edit
+                    }
+                    Text(stringResource(title))
                 },
                 navigationIcon = {
                     if (current != null) {
@@ -71,9 +76,9 @@ internal fun InventoryScreen(viewModel: InventoryViewModel) {
         },
     ) { insets ->
         if (current == null) {
-            Catalog(products, viewModel::openForm, Modifier.padding(insets))
+            Catalog(products, viewModel::openForm, viewModel::openEditForm, Modifier.padding(insets))
         } else {
-            AddProductForm(
+            ProductEditor(
                 current,
                 viewModel::changeForm,
                 viewModel::saveProduct,
@@ -84,7 +89,12 @@ internal fun InventoryScreen(viewModel: InventoryViewModel) {
 }
 
 @Composable
-private fun Catalog(products: List<Product>?, onAdd: () -> Unit, modifier: Modifier) {
+private fun Catalog(
+    products: List<Product>?,
+    onAdd: () -> Unit,
+    onEdit: (Product) -> Unit,
+    modifier: Modifier,
+) {
     val rupiah = remember { NumberFormat.getIntegerInstance(Locale.forLanguageTag("id-ID")) }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -120,16 +130,17 @@ private fun Catalog(products: List<Product>?, onAdd: () -> Unit, modifier: Modif
             }
             else -> items(products, key = { it.id }) { product ->
                 val price = remember(product.priceRupiah) { rupiah.format(product.priceRupiah) }
-                ProductCard(product, price)
+                ProductCard(product, price, onEdit = { onEdit(product) })
             }
         }
     }
 }
 
 @Composable
-private fun ProductCard(product: Product, price: String) {
+private fun ProductCard(product: Product, price: String, onEdit: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     OutlinedCard(
+        onClick = onEdit,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.outlinedCardColors(containerColor = colors.surfaceContainer),
         border = BorderStroke(1.dp, colors.outlineVariant),
@@ -149,33 +160,43 @@ private fun ProductCard(product: Product, price: String) {
                 Text(stringResource(R.string.inventory_barcode_display, product.barcode), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
             HorizontalDivider(color = colors.outlineVariant)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.inventory_minimum_short), color = colors.onSurfaceVariant)
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.inventory_minimum_short), Modifier.weight(1f), color = colors.onSurfaceVariant)
                 Text(product.minimumStock.toString())
+                Text(stringResource(R.string.inventory_edit_action), color = colors.primary, style = MaterialTheme.typography.labelLarge)
             }
         }
     }
 }
 
 @Composable
-private fun AddProductForm(
-    form: NewProductForm,
-    onChange: (NewProductForm.() -> NewProductForm) -> Unit,
+private fun ProductEditor(
+    form: ProductForm,
+    onChange: (ProductForm.() -> ProductForm) -> Unit,
     onSave: () -> Unit,
     modifier: Modifier,
 ) {
+    val editing = form.productId != null
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(stringResource(R.string.inventory_add_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            stringResource(if (editing) R.string.inventory_edit_hint else R.string.inventory_add_hint),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         ProductField(form.name, R.string.inventory_name, ProductProblem.Name, form, KeyboardType.Text) { value ->
             onChange { copy(name = value) }
         }
         ProductField(form.price, R.string.inventory_price, ProductProblem.Price, form, KeyboardType.Number) { value ->
             onChange { copy(price = value) }
         }
-        ProductField(form.stock, R.string.inventory_initial_stock, ProductProblem.Stock, form, KeyboardType.Number) { value ->
+        val stockLabel = if (editing) R.string.inventory_stock_current else R.string.inventory_initial_stock
+        ProductField(form.stock, stockLabel, ProductProblem.Stock, form, KeyboardType.Number) { value ->
             onChange { copy(stock = value) }
         }
         ProductField(form.minimumStock, R.string.inventory_minimum_stock, ProductProblem.MinimumStock, form, KeyboardType.Number) { value ->
@@ -184,8 +205,12 @@ private fun AddProductForm(
         ProductField(form.barcode, R.string.inventory_barcode, ProductProblem.DuplicateBarcode, form, KeyboardType.Text) { value ->
             onChange { copy(barcode = value) }
         }
-        if (form.problem == ProductProblem.Storage) {
-            Text(stringResource(R.string.inventory_invalid_storage), color = MaterialTheme.colorScheme.error)
+        when (form.problem) {
+            ProductProblem.NotFound, ProductProblem.Storage -> Text(
+                stringResource(form.problem.message),
+                color = MaterialTheme.colorScheme.error,
+            )
+            else -> Unit
         }
         Button(onClick = onSave, enabled = !form.saving, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(if (form.saving) R.string.inventory_saving else R.string.inventory_save))
@@ -198,7 +223,7 @@ private fun ProductField(
     value: String,
     label: Int,
     problem: ProductProblem,
-    form: NewProductForm,
+    form: ProductForm,
     keyboardType: KeyboardType,
     onChange: (String) -> Unit,
 ) {
@@ -206,14 +231,6 @@ private fun ProductField(
     val focusError = remember { BringIntoViewRequester() }
     LaunchedEffect(invalid) {
         if (invalid) focusError.bringIntoView()
-    }
-    val message = when (problem) {
-        ProductProblem.Name -> R.string.inventory_invalid_name
-        ProductProblem.Price -> R.string.inventory_invalid_price
-        ProductProblem.Stock -> R.string.inventory_invalid_stock
-        ProductProblem.MinimumStock -> R.string.inventory_invalid_minimum
-        ProductProblem.DuplicateBarcode -> R.string.inventory_duplicate_barcode
-        ProductProblem.Storage -> R.string.inventory_invalid_storage
     }
     OutlinedTextField(
         value = value,
@@ -224,6 +241,17 @@ private fun ProductField(
         singleLine = true,
         isError = invalid,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        supportingText = if (invalid) { { Text(stringResource(message)) } } else null,
+        supportingText = if (invalid) { { Text(stringResource(problem.message)) } } else null,
     )
 }
+
+private val ProductProblem.message: Int
+    get() = when (this) {
+        ProductProblem.Name -> R.string.inventory_invalid_name
+        ProductProblem.Price -> R.string.inventory_invalid_price
+        ProductProblem.Stock -> R.string.inventory_invalid_stock
+        ProductProblem.MinimumStock -> R.string.inventory_invalid_minimum
+        ProductProblem.DuplicateBarcode -> R.string.inventory_duplicate_barcode
+        ProductProblem.NotFound -> R.string.inventory_missing_product
+        ProductProblem.Storage -> R.string.inventory_invalid_storage
+    }
