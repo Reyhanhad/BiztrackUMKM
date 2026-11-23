@@ -7,37 +7,42 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.example.biztrackumkm.cashier.CashierScreen
-import com.example.biztrackumkm.inventory.InventoryScreen
+import com.example.biztrackumkm.auth.AuthViewModel
 import com.example.biztrackumkm.inventory.InventoryViewModel
 import com.example.biztrackumkm.inventory.ProductDatabase
+import com.example.biztrackumkm.navigation.AppNavigation
 import com.example.biztrackumkm.ui.theme.BiztrackUMKMTheme
 
 class MainActivity : ComponentActivity() {
+
     private val inventory: InventoryViewModel by viewModels {
-        viewModelFactory { initializer { InventoryViewModel(ProductDatabase.get(application).products()) } }
+        viewModelFactory {
+            initializer {
+                InventoryViewModel(
+                    ProductDatabase.get(application).products()
+                )
+            }
+        }
     }
+
+    private val authViewModel: AuthViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
         )
+
         setContent {
             BiztrackUMKMTheme {
-                var cashierOpen by rememberSaveable { mutableStateOf(false) }
-                if (cashierOpen) {
-                    CashierScreen(inventory.products, onBack = { cashierOpen = false })
-                } else {
-                    InventoryScreen(inventory, onOpenCashier = { cashierOpen = true })
-                }
+                AppNavigation(
+                    authViewModel = authViewModel,
+                    inventoryViewModel = inventory
+                )
             }
         }
     }

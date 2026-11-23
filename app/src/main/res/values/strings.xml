@@ -28,6 +28,7 @@
     <string name="inventory_duplicate_barcode">Barcode sudah digunakan oleh produk lain.</string>
     <string name="inventory_missing_product">Barang sudah tidak tersedia. Kembali ke katalog.</string>
     <string name="inventory_invalid_storage">Barang belum tersimpan. Coba lagi.</string>
+    <string name="owner_logout">Logout</string>
     <string name="cashier_open">Kasir</string>
     <string name="cashier_title">Transaksi kasir</string>
     <string name="cashier_back">Kembali</string>
