@@ -7,8 +7,13 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.biztrackumkm.cashier.CashierScreen
 import com.example.biztrackumkm.inventory.InventoryScreen
 import com.example.biztrackumkm.inventory.InventoryViewModel
 import com.example.biztrackumkm.inventory.ProductDatabase
@@ -25,6 +30,15 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
-        setContent { BiztrackUMKMTheme { InventoryScreen(inventory) } }
+        setContent {
+            BiztrackUMKMTheme {
+                var cashierOpen by rememberSaveable { mutableStateOf(false) }
+                if (cashierOpen) {
+                    CashierScreen(inventory.products, onBack = { cashierOpen = false })
+                } else {
+                    InventoryScreen(inventory, onOpenCashier = { cashierOpen = true })
+                }
+            }
+        }
     }
 }
