@@ -471,15 +471,12 @@ private fun ProductEditor(
             onChange { copy(name = value) }
         }
 
-        ProductField(
-            form.price,
-            R.string.inventory_price,
-            ProductProblem.Price,
-            form,
-            KeyboardType.Number
-        ) { value ->
-            onChange { copy(price = value) }
-        }
+        RupiahPriceField(
+            value = form.price,
+            onChange = { value -> onChange { copy(price = value) } },
+            enabled = !form.saving,
+            isError = form.problem == ProductProblem.Price,
+        )
 
         val stockLabel = if (editing) {
             R.string.inventory_stock_current
