@@ -34,6 +34,9 @@ internal interface ProductDao {
     @Query("SELECT * FROM products ORDER BY id DESC")
     fun observeProducts(): Flow<List<Product>>
 
+    @Query("SELECT * FROM products WHERE barcode = :barcode LIMIT 1")
+    suspend fun findByBarcode(barcode: String): Product?
+
     /** Produk baru memakai ID otomatis. Nilai -1 berarti barcode sudah terdaftar. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(product: Product): Long

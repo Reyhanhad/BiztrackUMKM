@@ -1,5 +1,7 @@
 package com.example.biztrackumkm.inventory
 
+import android.database.sqlite.SQLiteException
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -8,23 +10,30 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.biztrackumkm.R
 import java.text.NumberFormat
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,6 +92,7 @@ internal fun InventoryScreen(
                 products = products,
                 onAdd = viewModel::openForm,
                 onEdit = viewModel::openEditForm,
+                onBarcodeLookup = viewModel::openBarcode,
                 onOpenRestock = onOpenRestock,
                 modifier = Modifier.padding(insets)
             )
@@ -104,6 +114,7 @@ private fun Catalog(
     products: List<Product>?,
     onAdd: () -> Unit,
     onEdit: (Product) -> Unit,
+    onBarcodeLookup: suspend (String) -> Unit,
     onOpenRestock: () -> Unit,
     modifier: Modifier
 ) {
@@ -141,6 +152,8 @@ private fun Catalog(
                 )
             }
         }
+
+        item { BarcodeSearch(onBarcodeLookup) }
 
         // GER-1: Peringatan stok rendah
         item {
@@ -240,6 +253,55 @@ private fun Catalog(
             }
         }
     }
+}
+
+@Composable
+private fun BarcodeSearch(onLookup: suspend (String) -> Unit) {
+    var barcode by rememberSaveable { mutableStateOf("") }
+    var searching by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val canSearch = barcode.isNotBlank() && !searching
+    fun search() {
+        if (searching || barcode.isBlank()) return
+        searching = true
+        failed = false
+        scope.launch {
+            try {
+                onLookup(barcode)
+            } catch (error: SQLiteException) {
+                Log.e("Inventory", "Gagal mencari barcode", error)
+                failed = true
+            } finally {
+                searching = false
+            }
+        }
+    }
+
+    OutlinedTextField(
+        value = barcode,
+        onValueChange = {
+            barcode = it
+            failed = false
+        },
+        label = { Text(stringResource(R.string.inventory_search_barcode)) },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !searching,
+        singleLine = true,
+        isError = failed,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { search() }),
+        trailingIcon = {
+            TextButton(onClick = ::search, enabled = canSearch) {
+                Text(stringResource(R.string.inventory_search_action))
+            }
+        },
+        supportingText = if (failed) {
+            { Text(stringResource(R.string.inventory_search_error)) }
+        } else {
+            null
+        }
+    )
 }
 
 @Composable

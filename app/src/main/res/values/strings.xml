@@ -2,6 +2,9 @@
     <string name="app_name">BizTrack UMKM</string>
     <string name="inventory_title">Katalog &amp; stok</string>
     <string name="inventory_subtitle">Pantau stok dan batas minimum barang.</string>
+    <string name="inventory_search_barcode">Cari barcode produk</string>
+    <string name="inventory_search_action">Cari</string>
+    <string name="inventory_search_error">Barcode belum bisa dicari. Coba lagi.</string>
     <string name="inventory_empty_title">Belum ada produk</string>
     <string name="inventory_empty_hint">Tambah barang untuk mulai mengisi katalog.</string>
     <string name="inventory_add">Tambah barang</string>

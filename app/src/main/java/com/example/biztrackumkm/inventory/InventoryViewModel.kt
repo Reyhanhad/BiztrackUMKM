@@ -44,6 +44,17 @@ internal class InventoryViewModel(private val dao: ProductDao) : ViewModel() {
         )
     }
 
+    suspend fun openBarcode(barcode: String) {
+        val code = barcode.trim()
+        if (code.isEmpty() || _form.value != null) return
+        val product = dao.findByBarcode(code)
+        if (product != null) {
+            openEditForm(product)
+        } else if (_form.value == null) {
+            _form.value = ProductForm(barcode = code)
+        }
+    }
+
     fun closeForm() {
         if (_form.value?.saving != true) _form.value = null
     }
