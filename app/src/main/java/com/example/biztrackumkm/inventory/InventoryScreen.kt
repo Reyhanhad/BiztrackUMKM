@@ -559,6 +559,7 @@ private fun ProductField(
         value = value,
         onValueChange = onChange,
         label = { Text(stringResource(label)) },
+        shape = CardDefaults.outlinedShape,
         modifier = Modifier.fillMaxWidth()
             .bringIntoViewRequester(focusError),
         enabled = !form.saving,
