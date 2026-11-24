@@ -45,6 +45,15 @@ internal fun InventoryScreen(
 ) {
     val form by viewModel.form.collectAsStateWithLifecycle()
     val current = form
+    var scannerOpen by rememberSaveable { mutableStateOf(false) }
+    if (scannerOpen && current == null) {
+        BarcodeScannerScreen(
+            onLookup = viewModel::openBarcode,
+            onClose = { scannerOpen = false },
+        )
+        return
+    }
+
     val products by viewModel.products
         .collectAsStateWithLifecycle<List<Product>?>(initialValue = null)
 
@@ -93,6 +102,7 @@ internal fun InventoryScreen(
                 onAdd = viewModel::openForm,
                 onEdit = viewModel::openEditForm,
                 onBarcodeLookup = viewModel::openBarcode,
+                onScanBarcode = { scannerOpen = true },
                 onOpenRestock = onOpenRestock,
                 modifier = Modifier.padding(insets)
             )
@@ -115,6 +125,7 @@ private fun Catalog(
     onAdd: () -> Unit,
     onEdit: (Product) -> Unit,
     onBarcodeLookup: suspend (String) -> Unit,
+    onScanBarcode: () -> Unit,
     onOpenRestock: () -> Unit,
     modifier: Modifier
 ) {
@@ -153,7 +164,17 @@ private fun Catalog(
             }
         }
 
-        item { BarcodeSearch(onBarcodeLookup) }
+        item {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BarcodeSearch(onBarcodeLookup, Modifier.weight(1f))
+                OutlinedButton(onClick = onScanBarcode) {
+                    Text(stringResource(R.string.barcode_scan_open))
+                }
+            }
+        }
 
         // GER-1: Peringatan stok rendah
         item {
@@ -256,7 +277,7 @@ private fun Catalog(
 }
 
 @Composable
-private fun BarcodeSearch(onLookup: suspend (String) -> Unit) {
+private fun BarcodeSearch(onLookup: suspend (String) -> Unit, modifier: Modifier) {
     var barcode by rememberSaveable { mutableStateOf("") }
     var searching by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
@@ -285,7 +306,7 @@ private fun BarcodeSearch(onLookup: suspend (String) -> Unit) {
             failed = false
         },
         label = { Text(stringResource(R.string.inventory_search_barcode)) },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         enabled = !searching,
         singleLine = true,
         isError = failed,
