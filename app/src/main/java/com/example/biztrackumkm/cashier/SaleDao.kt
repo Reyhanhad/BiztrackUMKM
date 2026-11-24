@@ -10,6 +10,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import com.example.biztrackumkm.inventory.Product
 import java.math.BigInteger
+import kotlinx.coroutines.flow.Flow
 
 // Total and subtotal are exact decimal rupiah, including values beyond SQLite INTEGER range.
 @Entity(tableName = "sales", indices = [Index("soldAtMillis")])
@@ -66,6 +67,9 @@ internal class SaleRejected(val reason: SaleRejection) : RuntimeException()
 
 @Dao
 internal abstract class SaleDao {
+    @Query("SELECT totalRupiah FROM sales WHERE soldAtMillis >= :start AND soldAtMillis < :end")
+    abstract fun observeTotals(start: Long, end: Long): Flow<List<String>>
+
     @Query("SELECT * FROM products WHERE id = :productId")
     protected abstract suspend fun findProduct(productId: Long): Product?
 

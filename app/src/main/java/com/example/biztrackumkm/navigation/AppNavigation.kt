@@ -1,5 +1,6 @@
 package com.example.biztrackumkm.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,22 +26,22 @@ import com.example.biztrackumkm.auth.LoginScreen
 import com.example.biztrackumkm.auth.RegisterScreen
 import com.example.biztrackumkm.cashier.CashierScreen
 import com.example.biztrackumkm.cashier.CheckoutViewModel
+import com.example.biztrackumkm.dashboard.DailySales
+import com.example.biztrackumkm.dashboard.DashboardScreen
 import com.example.biztrackumkm.inventory.InventoryScreen
 import com.example.biztrackumkm.inventory.InventoryViewModel
 import com.example.biztrackumkm.restock.RestockScreen
 import com.example.biztrackumkm.restock.RestockViewModel
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 internal fun AppNavigation(
     authViewModel: AuthViewModel,
     inventoryViewModel: InventoryViewModel,
     checkoutViewModel: CheckoutViewModel,
+    dailySales: Flow<DailySales>,
 ) {
     val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
-
-    val restockViewModel = remember(inventoryViewModel) {
-        RestockViewModel(inventoryViewModel.products)
-    }
 
     when (uiState.screen) {
 
@@ -67,50 +68,49 @@ internal fun AppNavigation(
             )
         }
 
-        AuthScreenState.Authenticated -> {
+        AuthScreenState.Authenticated -> OwnerNavigation(
+            inventory = inventoryViewModel,
+            checkout = checkoutViewModel,
+            dailySales = dailySales,
+            onLogout = authViewModel::logout,
+        )
+    }
+}
 
-            var currentScreen by rememberSaveable {
-                mutableStateOf("inventory")
-            }
+@Composable
+internal fun OwnerNavigation(
+    inventory: InventoryViewModel,
+    checkout: CheckoutViewModel,
+    dailySales: Flow<DailySales>,
+    onLogout: () -> Unit,
+) {
+    val restock = remember(inventory) { RestockViewModel(inventory.products) }
+    var screen by rememberSaveable { mutableStateOf("dashboard") }
+    var returnScreen by rememberSaveable { mutableStateOf("dashboard") }
 
-            when (currentScreen) {
+    fun openFromHere(destination: String) {
+        returnScreen = screen
+        screen = destination
+    }
 
-                "cashier" -> {
-                    CashierScreen(
-                        inventoryViewModel.products,
-                        checkoutViewModel,
-                        onBack = {
-                            currentScreen = "inventory"
-                        }
-                    )
-                }
-
-                "restock" -> {
-                    RestockScreen(
-                        viewModel = restockViewModel,
-                        onBack = {
-                            currentScreen = "inventory"
-                        }
-                    )
-                }
-
-                else -> {
-                    InventoryScreen(
-                        viewModel = inventoryViewModel,
-                        onOpenCashier = {
-                            currentScreen = "cashier"
-                        },
-                        onOpenRestock = {
-                            currentScreen = "restock"
-                        },
-                        onLogout = {
-                            currentScreen = "inventory"
-                            authViewModel.logout()
-                        }
-                    )
-                }
-            }
-        }
+    BackHandler(enabled = screen == "inventory") { screen = "dashboard" }
+    when (screen) {
+        "dashboard" -> DashboardScreen(
+            dailySales = dailySales,
+            restock = restock,
+            onCashier = { openFromHere("cashier") },
+            onInventory = { screen = "inventory" },
+            onRestock = { openFromHere("restock") },
+            onLogout = onLogout,
+        )
+        "cashier" -> CashierScreen(inventory.products, checkout, onBack = { screen = returnScreen })
+        "restock" -> RestockScreen(restock, onBack = { screen = returnScreen })
+        "inventory" -> InventoryScreen(
+            viewModel = inventory,
+            onOpenCashier = { openFromHere("cashier") },
+            onOpenRestock = { openFromHere("restock") },
+            onLogout = onLogout,
+        )
     }
 }
 
