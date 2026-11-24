@@ -51,4 +51,16 @@
     <string name="cashier_increase">Tambah jumlah %1$s</string>
     <string name="cashier_remove">Hapus</string>
     <string name="cashier_remove_product">Hapus %1$s dari keranjang</string>
+    <string name="restock_title">Peringatan Stok Rendah</string>
+    <string name="restock_open">Lihat Stok Rendah</string>
+    <string name="restock_back">Kembali</string>
+    <string name="restock_warning_count">%1$d produk mencapai batas minimum stok.</string>
+    <string name="restock_product_count">%1$d produk membutuhkan restock.</string>
+    <string name="restock_status_low">STOK RENDAH</string>
+    <string name="restock_status_empty">STOK HABIS</string>
+    <string name="restock_current_stock">Stok saat ini: %1$d</string>
+    <string name="restock_minimum_stock">Minimum stok: %1$d</string>
+    <string name="restock_action_hint">Segera lakukan pengisian stok.</string>
+    <string name="restock_empty_title">Tidak ada produk dengan stok rendah</string>
+    <string name="restock_empty_hint">Seluruh produk memiliki stok yang aman.</string>
 </resources>
