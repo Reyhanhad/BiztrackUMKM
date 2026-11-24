@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,10 +46,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.biztrackumkm.R
 import com.example.biztrackumkm.inventory.Product
-import java.math.BigInteger
 import java.text.NumberFormat
 import java.util.Locale
 import kotlinx.coroutines.flow.Flow
@@ -70,32 +71,13 @@ private val CartQuantitiesSaver = Saver<SnapshotStateMap<Long, Int>, LongArray>(
     },
 )
 
-private data class CartLine(val product: Product, val quantity: Int) {
-    val subtotal: Number = if (product.priceRupiah <= Long.MAX_VALUE / quantity) {
-        product.priceRupiah * quantity
-    } else {
-        BigInteger.valueOf(product.priceRupiah) * BigInteger.valueOf(quantity.toLong())
-    }
-}
-
-private fun cartTotal(lines: List<CartLine>): Number {
-    var total = 0L
-    var largeTotal: BigInteger? = null
-    for (line in lines) {
-        val subtotal = line.subtotal
-        if (largeTotal == null && subtotal is Long && subtotal <= Long.MAX_VALUE - total) {
-            total += subtotal
-        } else {
-            largeTotal = (largeTotal ?: BigInteger.valueOf(total)) +
-                (subtotal as? BigInteger ?: BigInteger.valueOf(subtotal.toLong()))
-        }
-    }
-    return largeTotal ?: total
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun CashierScreen(products: Flow<List<Product>>, onBack: () -> Unit) {
+internal fun CashierScreen(
+    products: Flow<List<Product>>,
+    checkout: CheckoutViewModel,
+    onBack: () -> Unit,
+) {
     val catalog by products.collectAsStateWithLifecycle<List<Product>?>(initialValue = null)
     val quantities = rememberSaveable(saver = CartQuantitiesSaver) { mutableStateMapOf<Long, Int>() }
     val selected = quantities.toMap()
@@ -105,6 +87,9 @@ internal fun CashierScreen(products: Flow<List<Product>>, onBack: () -> Unit) {
         }
     }
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
+    var confirmOpen by rememberSaveable { mutableStateOf(false) }
+    val checkoutState by checkout.state.collectAsStateWithLifecycle()
+    val canCheckout = lines.isNotEmpty() && lines.size == selected.size
     val rupiah = remember { NumberFormat.getIntegerInstance(Locale.forLanguageTag("id-ID")) }
     val total = remember(lines) { rupiah.format(cartTotal(lines)) }
     val unitCount = remember(lines) { lines.sumOf { it.quantity.toLong() } }
@@ -116,18 +101,22 @@ internal fun CashierScreen(products: Flow<List<Product>>, onBack: () -> Unit) {
         val quantity = quantities[id] ?: return
         if (quantity > 1) quantities[id] = quantity - 1
     }
-    BackHandler(onBack = onBack)
+    BackHandler { if (checkout.state.value == CheckoutState.Idle) onBack() }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.cashier_title)) },
                 navigationIcon = {
-                    TextButton(onClick = onBack) { Text(stringResource(R.string.cashier_back)) }
+                    TextButton(onClick = onBack, enabled = checkoutState == CheckoutState.Idle) {
+                        Text(stringResource(R.string.cashier_back))
+                    }
                 },
             )
         },
-        bottomBar = { CartTotal(total) },
+        bottomBar = {
+            CartTotal(total, canCheckout && checkoutState == CheckoutState.Idle) { confirmOpen = true }
+        },
     ) { insets ->
         LazyColumn(
             modifier = Modifier.padding(insets).consumeWindowInsets(insets).fillMaxSize(),
@@ -193,27 +182,105 @@ internal fun CashierScreen(products: Flow<List<Product>>, onBack: () -> Unit) {
             },
         )
     }
+
+    if (confirmOpen && checkoutState == CheckoutState.Idle) {
+        AlertDialog(
+            onDismissRequest = { confirmOpen = false },
+            title = { Text(stringResource(R.string.checkout_confirm_title)) },
+            text = {
+                val amount = stringResource(R.string.cashier_amount, total)
+                Text(stringResource(R.string.checkout_confirm_body, amount))
+            },
+            confirmButton = {
+                Button(
+                    enabled = canCheckout,
+                    onClick = {
+                        confirmOpen = false
+                        checkout.save(lines)
+                    },
+                ) { Text(stringResource(R.string.checkout_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmOpen = false }) { Text(stringResource(R.string.checkout_cancel)) }
+            },
+        )
+    }
+    if (checkoutState != CheckoutState.Idle) {
+        CheckoutResultDialog(checkoutState, rupiah) {
+            if (checkoutState is CheckoutState.Saved) quantities.clear()
+            checkout.dismissResult()
+        }
+    }
 }
 
 @Composable
-private fun CartTotal(total: String) {
+private fun CartTotal(total: String, canCheckout: Boolean, onCheckout: () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
-        Row(
+        Column(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(stringResource(R.string.cashier_total), Modifier.weight(1f))
-            Text(
-                stringResource(R.string.cashier_amount, total),
-                modifier = Modifier.weight(2f),
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.End,
-            )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.cashier_total), Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.cashier_amount, total),
+                    modifier = Modifier.weight(2f),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.End,
+                )
+            }
+            Button(onClick = onCheckout, enabled = canCheckout, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.checkout_open))
+            }
         }
     }
+}
+
+@Composable
+private fun CheckoutResultDialog(state: CheckoutState, rupiah: NumberFormat, onDismiss: () -> Unit) {
+    val saving = state == CheckoutState.Saving
+    val title = when (state) {
+        CheckoutState.Idle -> return
+        CheckoutState.Saving -> R.string.checkout_saving
+        is CheckoutState.Saved -> R.string.checkout_saved_title
+        else -> R.string.checkout_failed_title
+    }
+    AlertDialog(
+        onDismissRequest = { if (!saving) onDismiss() },
+        properties = DialogProperties(dismissOnBackPress = !saving, dismissOnClickOutside = !saving),
+        title = { Text(stringResource(title)) },
+        text = {
+            when (state) {
+                CheckoutState.Idle -> Unit
+                CheckoutState.Saving -> CircularProgressIndicator()
+                is CheckoutState.Saved -> {
+                    val amount = stringResource(R.string.cashier_amount, rupiah.format(state.total))
+                    Text(stringResource(R.string.checkout_saved_body, amount))
+                }
+                is CheckoutState.Rejected -> Text(
+                    when (val reason = state.reason) {
+                        SaleRejection.ProductUnavailable -> stringResource(R.string.checkout_product_unavailable)
+                        is SaleRejection.InsufficientStock -> stringResource(
+                            R.string.checkout_insufficient_stock, reason.productName, reason.available,
+                        )
+                        is SaleRejection.PriceChanged -> stringResource(R.string.checkout_price_changed, reason.productName)
+                    },
+                )
+                CheckoutState.StorageError -> Text(stringResource(R.string.checkout_storage_error))
+            }
+        },
+        confirmButton = {
+            if (!saving) {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.checkout_done)) }
+            }
+        },
+    )
 }
 
 @Composable

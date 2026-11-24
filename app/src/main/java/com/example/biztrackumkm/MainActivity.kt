@@ -10,6 +10,7 @@ import androidx.activity.viewModels
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.biztrackumkm.auth.AuthViewModel
+import com.example.biztrackumkm.cashier.CheckoutViewModel
 import com.example.biztrackumkm.inventory.InventoryViewModel
 import com.example.biztrackumkm.inventory.ProductDatabase
 import com.example.biztrackumkm.navigation.AppNavigation
@@ -27,6 +28,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val checkout: CheckoutViewModel by viewModels {
+        viewModelFactory { initializer { CheckoutViewModel(ProductDatabase.get(application).sales()) } }
+    }
+
     private val authViewModel: AuthViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,7 +46,8 @@ class MainActivity : ComponentActivity() {
             BiztrackUMKMTheme {
                 AppNavigation(
                     authViewModel = authViewModel,
-                    inventoryViewModel = inventory
+                    inventoryViewModel = inventory,
+                    checkoutViewModel = checkout,
                 )
             }
         }
