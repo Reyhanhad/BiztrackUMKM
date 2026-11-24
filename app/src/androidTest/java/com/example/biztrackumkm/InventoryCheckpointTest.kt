@@ -2,6 +2,8 @@ package com.example.biztrackumkm
 
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
@@ -14,6 +16,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.text.AnnotatedString
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.biztrackumkm.inventory.InventoryScreen
@@ -172,5 +175,41 @@ class InventoryCheckpointTest {
         compose.onNodeWithText(updated.name).performClick()
         field("Batas minimum stok").assert(hasText("5"))
         field("Stok saat ini").assert(hasText("12"))
+    }
+
+    @Test fun manualBarcodeLookupOpensExistingProductOrPrefillsNewProduct() {
+        runBlocking {
+            database.products().insert(Product("Kode tanpa nol", 10_000, 8, 2, "1234"))
+            database.products().insert(Product("Kode dengan nol", 12_500, 7, 3, "001234"))
+        }
+
+        fun lookup(code: String) {
+            awaitText("Cari barcode produk")
+            field("Cari barcode produk").performTextInput(code)
+            compose.onNodeWithText("Cari").performClick()
+        }
+
+        lookup(" 001234 ")
+        awaitText("Ubah barang")
+        field("Nama produk").assert(hasText("Kode dengan nol"))
+        field("Barcode (opsional)").assert(hasText("001234"))
+        backToCatalog()
+
+        lookup("000456")
+        awaitText("Isi data barang dan stok awal.")
+        field("Barcode (opsional)").assert(hasText("000456"))
+        val empty = SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString(""))
+        field("Nama produk").assert(empty)
+        field("Harga jual (Rp)").assert(empty)
+        field("Nama produk").performTextInput("Oatmeal")
+        field("Harga jual (Rp)").performTextInput("23000")
+        field("Stok awal").performTextInput("7")
+        field("Batas minimum stok").performTextInput("1")
+        save()
+
+        lookup("000456")
+        awaitText("Ubah barang")
+        field("Nama produk").assert(hasText("Oatmeal"))
+        field("Harga jual (Rp)").assert(hasText("23000"))
     }
 }
