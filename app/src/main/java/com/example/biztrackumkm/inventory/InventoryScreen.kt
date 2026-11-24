@@ -2,16 +2,7 @@ package com.example.biztrackumkm.inventory
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -19,18 +10,7 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
@@ -48,11 +28,21 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun InventoryScreen(viewModel: InventoryViewModel, onOpenCashier: () -> Unit, onLogout: () -> Unit) {
+internal fun InventoryScreen(
+    viewModel: InventoryViewModel,
+    onOpenCashier: () -> Unit,
+    onLogout: () -> Unit,
+    onOpenRestock: () -> Unit
+) {
     val form by viewModel.form.collectAsStateWithLifecycle()
     val current = form
-    val products by viewModel.products.collectAsStateWithLifecycle<List<Product>?>(initialValue = null)
-    BackHandler(enabled = current != null, onBack = viewModel::closeForm)
+    val products by viewModel.products
+        .collectAsStateWithLifecycle<List<Product>?>(initialValue = null)
+
+    BackHandler(
+        enabled = current != null,
+        onBack = viewModel::closeForm
+    )
 
     Scaffold(
         topBar = {
@@ -67,7 +57,10 @@ internal fun InventoryScreen(viewModel: InventoryViewModel, onOpenCashier: () ->
                 },
                 navigationIcon = {
                     if (current != null) {
-                        TextButton(onClick = viewModel::closeForm, enabled = !current.saving) {
+                        TextButton(
+                            onClick = viewModel::closeForm,
+                            enabled = !current.saving
+                        ) {
                             Text(stringResource(R.string.inventory_back))
                         }
                     }
@@ -81,18 +74,26 @@ internal fun InventoryScreen(viewModel: InventoryViewModel, onOpenCashier: () ->
                             Text(stringResource(R.string.owner_logout))
                         }
                     }
-                },
+                }
             )
-        },
+        }
     ) { insets ->
         if (current == null) {
-            Catalog(products, viewModel::openForm, viewModel::openEditForm, Modifier.padding(insets))
+            Catalog(
+                products = products,
+                onAdd = viewModel::openForm,
+                onEdit = viewModel::openEditForm,
+                onOpenRestock = onOpenRestock,
+                modifier = Modifier.padding(insets)
+            )
         } else {
             ProductEditor(
                 current,
                 viewModel::changeForm,
                 viewModel::saveProduct,
-                Modifier.padding(insets).consumeWindowInsets(insets).imePadding(),
+                Modifier.padding(insets)
+                    .consumeWindowInsets(insets)
+                    .imePadding()
             )
         }
     }
@@ -103,81 +104,251 @@ private fun Catalog(
     products: List<Product>?,
     onAdd: () -> Unit,
     onEdit: (Product) -> Unit,
-    modifier: Modifier,
+    onOpenRestock: () -> Unit,
+    modifier: Modifier
 ) {
-    val rupiah = remember { NumberFormat.getIntegerInstance(Locale.forLanguageTag("id-ID")) }
+    val rupiah = remember {
+        NumberFormat.getIntegerInstance(
+            Locale.forLanguageTag("id-ID")
+        )
+    }
+
+    val lowStockCount = products?.count {
+        it.stock <= it.minimumStock
+    } ?: 0
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(R.string.inventory_title), style = MaterialTheme.typography.headlineSmall)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    stringResource(R.string.inventory_title),
+                    style = MaterialTheme.typography.headlineSmall
+                )
                 Text(
                     stringResource(R.string.inventory_subtitle),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
+
+        // GER-1: Peringatan stok rendah
         item {
-            Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.inventory_add), modifier = Modifier.padding(vertical = 4.dp))
+            if (lowStockCount > 0) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.restock_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+
+                        Text(
+                            text = stringResource(R.string.restock_warning_count, lowStockCount),
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+
+                        Button(
+                            onClick = onOpenRestock,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            )
+                        ) {
+                            Text(stringResource(R.string.restock_open))
+                        }
+                    }
+                }
+            } else {
+                OutlinedButton(
+                    onClick = onOpenRestock,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.restock_open))
+                }
             }
         }
+
+        item {
+            Button(
+                onClick = onAdd,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    stringResource(R.string.inventory_add),
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
+        }
+
         when {
             products == null -> item {
-                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator()
                 }
             }
+
             products.isEmpty() -> item {
-                Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(stringResource(R.string.inventory_empty_title), style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(R.string.inventory_empty_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(
+                    Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        stringResource(R.string.inventory_empty_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        stringResource(R.string.inventory_empty_hint),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
+
             else -> items(products, key = { it.id }) { product ->
-                val price = remember(product.priceRupiah) { rupiah.format(product.priceRupiah) }
-                ProductCard(product, price, onEdit = { onEdit(product) })
+                val price = remember(product.priceRupiah) {
+                    rupiah.format(product.priceRupiah)
+                }
+
+                ProductCard(
+                    product,
+                    price,
+                    onEdit = { onEdit(product) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ProductCard(product: Product, price: String, onEdit: () -> Unit) {
+private fun ProductCard(
+    product: Product,
+    price: String,
+    onEdit: () -> Unit
+) {
     val colors = MaterialTheme.colorScheme
+    val isLowStock = product.stock <= product.minimumStock
+
     OutlinedCard(
         onClick = onEdit,
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.outlinedCardColors(containerColor = colors.surfaceContainer),
-        border = BorderStroke(1.dp, colors.outlineVariant),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = colors.surfaceContainer
+        ),
+        border = BorderStroke(
+            1.dp,
+            if (isLowStock) colors.error else colors.outlineVariant
+        )
     ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(
+            Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 Column(Modifier.weight(1f)) {
-                    Text(product.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.inventory_price_display, price), color = colors.onSurfaceVariant)
+                    Text(
+                        product.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        stringResource(
+                            R.string.inventory_price_display,
+                            price
+                        ),
+                        color = colors.onSurfaceVariant
+                    )
                 }
+
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(stringResource(R.string.inventory_stock_current), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
-                    Text(product.stock.toString(), style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        stringResource(R.string.inventory_stock_current),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.onSurfaceVariant
+                    )
+
+                    Text(
+                        product.stock.toString(),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = if (isLowStock) {
+                            colors.error
+                        } else {
+                            colors.onSurface
+                        }
+                    )
                 }
             }
-            if (product.barcode != null) {
-                Text(stringResource(R.string.inventory_barcode_display, product.barcode), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+
+            // GER-1: Status stok produk
+            if (isLowStock) {
+                Text(
+                    text = if (product.stock == 0) {
+                        stringResource(R.string.restock_status_empty)
+                    } else {
+                        stringResource(R.string.restock_status_low)
+                    },
+                    color = colors.error,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
+
+            if (product.barcode != null) {
+                Text(
+                    stringResource(
+                        R.string.inventory_barcode_display,
+                        product.barcode
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant
+                )
+            }
+
             HorizontalDivider(color = colors.outlineVariant)
+
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(stringResource(R.string.inventory_minimum_short), Modifier.weight(1f), color = colors.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.inventory_minimum_short),
+                    Modifier.weight(1f),
+                    color = colors.onSurfaceVariant
+                )
+
                 Text(product.minimumStock.toString())
-                Text(stringResource(R.string.inventory_edit_action), color = colors.primary, style = MaterialTheme.typography.labelLarge)
+
+                Text(
+                    stringResource(R.string.inventory_edit_action),
+                    color = colors.primary,
+                    style = MaterialTheme.typography.labelLarge
+                )
             }
         }
     }
@@ -188,42 +359,102 @@ private fun ProductEditor(
     form: ProductForm,
     onChange: (ProductForm.() -> ProductForm) -> Unit,
     onSave: () -> Unit,
-    modifier: Modifier,
+    modifier: Modifier
 ) {
     val editing = form.productId != null
+
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            stringResource(if (editing) R.string.inventory_edit_hint else R.string.inventory_add_hint),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            stringResource(
+                if (editing) R.string.inventory_edit_hint
+                else R.string.inventory_add_hint
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        ProductField(form.name, R.string.inventory_name, ProductProblem.Name, form, KeyboardType.Text) { value ->
+
+        ProductField(
+            form.name,
+            R.string.inventory_name,
+            ProductProblem.Name,
+            form,
+            KeyboardType.Text
+        ) { value ->
             onChange { copy(name = value) }
         }
-        ProductField(form.price, R.string.inventory_price, ProductProblem.Price, form, KeyboardType.Number) { value ->
+
+        ProductField(
+            form.price,
+            R.string.inventory_price,
+            ProductProblem.Price,
+            form,
+            KeyboardType.Number
+        ) { value ->
             onChange { copy(price = value) }
         }
-        val stockLabel = if (editing) R.string.inventory_stock_current else R.string.inventory_initial_stock
-        ProductField(form.stock, stockLabel, ProductProblem.Stock, form, KeyboardType.Number) { value ->
+
+        val stockLabel = if (editing) {
+            R.string.inventory_stock_current
+        } else {
+            R.string.inventory_initial_stock
+        }
+
+        ProductField(
+            form.stock,
+            stockLabel,
+            ProductProblem.Stock,
+            form,
+            KeyboardType.Number
+        ) { value ->
             onChange { copy(stock = value) }
         }
-        ProductField(form.minimumStock, R.string.inventory_minimum_stock, ProductProblem.MinimumStock, form, KeyboardType.Number) { value ->
+
+        ProductField(
+            form.minimumStock,
+            R.string.inventory_minimum_stock,
+            ProductProblem.MinimumStock,
+            form,
+            KeyboardType.Number
+        ) { value ->
             onChange { copy(minimumStock = value) }
         }
-        ProductField(form.barcode, R.string.inventory_barcode, ProductProblem.DuplicateBarcode, form, KeyboardType.Text) { value ->
+
+        ProductField(
+            form.barcode,
+            R.string.inventory_barcode,
+            ProductProblem.DuplicateBarcode,
+            form,
+            KeyboardType.Text
+        ) { value ->
             onChange { copy(barcode = value) }
         }
+
         when (form.problem) {
-            ProductProblem.NotFound, ProductProblem.Storage -> Text(
+            ProductProblem.NotFound,
+            ProductProblem.Storage -> Text(
                 stringResource(form.problem.message),
-                color = MaterialTheme.colorScheme.error,
+                color = MaterialTheme.colorScheme.error
             )
+
             else -> Unit
         }
-        Button(onClick = onSave, enabled = !form.saving, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(if (form.saving) R.string.inventory_saving else R.string.inventory_save))
+
+        Button(
+            onClick = onSave,
+            enabled = !form.saving,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                stringResource(
+                    if (form.saving) R.string.inventory_saving
+                    else R.string.inventory_save
+                )
+            )
         }
     }
 }
@@ -235,23 +466,32 @@ private fun ProductField(
     problem: ProductProblem,
     form: ProductForm,
     keyboardType: KeyboardType,
-    onChange: (String) -> Unit,
+    onChange: (String) -> Unit
 ) {
     val invalid = form.problem == problem
     val focusError = remember { BringIntoViewRequester() }
+
     LaunchedEffect(invalid) {
         if (invalid) focusError.bringIntoView()
     }
+
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(stringResource(label)) },
-        modifier = Modifier.fillMaxWidth().bringIntoViewRequester(focusError),
+        modifier = Modifier.fillMaxWidth()
+            .bringIntoViewRequester(focusError),
         enabled = !form.saving,
         singleLine = true,
         isError = invalid,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        supportingText = if (invalid) { { Text(stringResource(problem.message)) } } else null,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = keyboardType
+        ),
+        supportingText = if (invalid) {
+            { Text(stringResource(problem.message)) }
+        } else {
+            null
+        }
     )
 }
 

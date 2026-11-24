@@ -44,7 +44,7 @@ class InventoryCheckpointTest {
         openDatabase()
         compose.setContent {
             BiztrackUMKMTheme {
-                model.value?.let { InventoryScreen(it, onOpenCashier = {}, onLogout = {}) }
+                model.value?.let { InventoryScreen(it, onOpenCashier = {}, onLogout = {}, onOpenRestock = {}) }
             }
         }
     }

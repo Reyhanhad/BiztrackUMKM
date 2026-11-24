@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -26,6 +27,8 @@ import com.example.biztrackumkm.cashier.CashierScreen
 import com.example.biztrackumkm.cashier.CheckoutViewModel
 import com.example.biztrackumkm.inventory.InventoryScreen
 import com.example.biztrackumkm.inventory.InventoryViewModel
+import com.example.biztrackumkm.restock.RestockScreen
+import com.example.biztrackumkm.restock.RestockViewModel
 
 @Composable
 internal fun AppNavigation(
@@ -34,6 +37,10 @@ internal fun AppNavigation(
     checkoutViewModel: CheckoutViewModel,
 ) {
     val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
+
+    val restockViewModel = remember(inventoryViewModel) {
+        RestockViewModel(inventoryViewModel.products)
+    }
 
     when (uiState.screen) {
 
@@ -61,15 +68,47 @@ internal fun AppNavigation(
         }
 
         AuthScreenState.Authenticated -> {
-            var cashierOpen by rememberSaveable { mutableStateOf(false) }
-            if (cashierOpen) {
-                CashierScreen(inventoryViewModel.products, checkoutViewModel, onBack = { cashierOpen = false })
-            } else {
-                InventoryScreen(
-                    inventoryViewModel,
-                    onOpenCashier = { cashierOpen = true },
-                    onLogout = authViewModel::logout,
-                )
+
+            var currentScreen by rememberSaveable {
+                mutableStateOf("inventory")
+            }
+
+            when (currentScreen) {
+
+                "cashier" -> {
+                    CashierScreen(
+                        inventoryViewModel.products,
+                        checkoutViewModel,
+                        onBack = {
+                            currentScreen = "inventory"
+                        }
+                    )
+                }
+
+                "restock" -> {
+                    RestockScreen(
+                        viewModel = restockViewModel,
+                        onBack = {
+                            currentScreen = "inventory"
+                        }
+                    )
+                }
+
+                else -> {
+                    InventoryScreen(
+                        viewModel = inventoryViewModel,
+                        onOpenCashier = {
+                            currentScreen = "cashier"
+                        },
+                        onOpenRestock = {
+                            currentScreen = "restock"
+                        },
+                        onLogout = {
+                            currentScreen = "inventory"
+                            authViewModel.logout()
+                        }
+                    )
+                }
             }
         }
     }
