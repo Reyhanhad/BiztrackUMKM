@@ -26,6 +26,11 @@
     <string name="inventory_saving">Menyimpan…</string>
     <string name="inventory_name">Nama produk</string>
     <string name="inventory_price">Harga jual (Rp)</string>
+    <string name="inventory_price_enter">Masukkan harga</string>
+    <string name="inventory_price_clear">Hapus semua</string>
+    <string name="inventory_price_backspace">Hapus digit</string>
+    <string name="inventory_price_done">Selesai</string>
+    <string name="inventory_price_too_large">Harga terlalu besar. Hapus digit untuk melanjutkan.</string>
     <string name="inventory_initial_stock">Stok awal</string>
     <string name="inventory_stock_current">Stok saat ini</string>
     <string name="inventory_minimum_short">Batas minimum</string>

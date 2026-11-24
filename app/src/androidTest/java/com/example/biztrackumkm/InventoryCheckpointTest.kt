@@ -7,6 +7,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.AnnotatedString
@@ -79,20 +81,34 @@ class InventoryCheckpointTest {
 
     private fun backToCatalog() = compose.onNodeWithText("Kembali").performClick()
 
+    private fun enterPrice(vararg keys: String) {
+        compose.onNodeWithText("Harga jual (Rp)").performScrollTo().performClick()
+        for (key in keys) compose.onNodeWithText(key).performScrollTo().performClick()
+        compose.onNodeWithText("Selesai").performScrollTo().performClick()
+    }
+
     @Test fun savedProductsSurviveReopeningAndInvalidEntriesAreRejected() {
-        fun add() = compose.onNodeWithText("Tambah barang").performClick()
+        fun add() {
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Tambah barang"))
+            compose.onNodeWithText("Tambah barang").performClick()
+        }
         fun input(label: String, value: String) {
             field(label).performTextInput(value)
         }
         fun fill(name: String, stock: String = "7", barcode: String? = null) {
             input("Nama produk", name)
-            input("Harga jual (Rp)", "12500")
+            enterPrice("1", "2", "5", "00")
             input("Stok awal", stock)
             input("Batas minimum stok", "3")
             if (barcode != null) input("Barcode (opsional)", barcode)
         }
+        fun assertEmptyCatalog() {
+            runBlocking { database.products().observeProducts().first() }
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Belum ada produk"))
+            compose.onNodeWithText("Belum ada produk").assertIsDisplayed()
+        }
 
-        awaitText("Belum ada produk")
+        assertEmptyCatalog()
         add()
         save()
         compose.onNodeWithText("Isi nama produk.").assertIsDisplayed()
@@ -100,7 +116,7 @@ class InventoryCheckpointTest {
         save()
         compose.onNodeWithText("Masukkan stok berupa bilangan bulat, nol atau lebih.").assertIsDisplayed()
         backToCatalog()
-        awaitText("Belum ada produk")
+        assertEmptyCatalog()
 
         add()
         fill("Minyak Goreng", barcode = "001234")
@@ -152,7 +168,7 @@ class InventoryCheckpointTest {
         compose.onNodeWithText("Masukkan stok berupa bilangan bulat, nol atau lebih.").assertIsDisplayed()
         assertEquals(unchanged, allProducts())
 
-        field("Harga jual (Rp)").performTextReplacement("25000")
+        enterPrice("Hapus semua", "2", "4", "Hapus digit", "5", "000")
         field("Stok saat ini").performTextReplacement("12")
         field("Batas minimum stok").performTextReplacement("5")
         field("Barcode (opsional)").performTextReplacement(other.barcode!!)
@@ -200,9 +216,9 @@ class InventoryCheckpointTest {
         field("Barcode (opsional)").assert(hasText("000456"))
         val empty = SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString(""))
         field("Nama produk").assert(empty)
-        field("Harga jual (Rp)").assert(empty)
+        compose.onNodeWithText("Masukkan harga").assertIsDisplayed()
         field("Nama produk").performTextInput("Oatmeal")
-        field("Harga jual (Rp)").performTextInput("23000")
+        enterPrice("2", "3", "000")
         field("Stok awal").performTextInput("7")
         field("Batas minimum stok").performTextInput("1")
         save()
@@ -210,6 +226,6 @@ class InventoryCheckpointTest {
         lookup("000456")
         awaitText("Ubah barang")
         field("Nama produk").assert(hasText("Oatmeal"))
-        field("Harga jual (Rp)").assert(hasText("23000"))
+        compose.onNodeWithText("Rp23.000").assertIsDisplayed()
     }
 }
