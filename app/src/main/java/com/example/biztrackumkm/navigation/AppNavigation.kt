@@ -23,13 +23,15 @@ import com.example.biztrackumkm.auth.AuthViewModel
 import com.example.biztrackumkm.auth.LoginScreen
 import com.example.biztrackumkm.auth.RegisterScreen
 import com.example.biztrackumkm.cashier.CashierScreen
+import com.example.biztrackumkm.cashier.CheckoutViewModel
 import com.example.biztrackumkm.inventory.InventoryScreen
 import com.example.biztrackumkm.inventory.InventoryViewModel
 
 @Composable
 internal fun AppNavigation(
     authViewModel: AuthViewModel,
-    inventoryViewModel: InventoryViewModel
+    inventoryViewModel: InventoryViewModel,
+    checkoutViewModel: CheckoutViewModel,
 ) {
     val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -61,7 +63,7 @@ internal fun AppNavigation(
         AuthScreenState.Authenticated -> {
             var cashierOpen by rememberSaveable { mutableStateOf(false) }
             if (cashierOpen) {
-                CashierScreen(inventoryViewModel.products, onBack = { cashierOpen = false })
+                CashierScreen(inventoryViewModel.products, checkoutViewModel, onBack = { cashierOpen = false })
             } else {
                 InventoryScreen(
                     inventoryViewModel,
