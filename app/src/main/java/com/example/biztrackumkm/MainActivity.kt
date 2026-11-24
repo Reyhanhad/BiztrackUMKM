@@ -10,6 +10,7 @@ import androidx.activity.viewModels
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.biztrackumkm.auth.AuthViewModel
+import com.example.biztrackumkm.dashboard.observeDailySales
 import com.example.biztrackumkm.cashier.CheckoutViewModel
 import com.example.biztrackumkm.inventory.InventoryViewModel
 import com.example.biztrackumkm.inventory.ProductDatabase
@@ -32,6 +33,8 @@ class MainActivity : ComponentActivity() {
         viewModelFactory { initializer { CheckoutViewModel(ProductDatabase.get(application).sales()) } }
     }
 
+    private val dailySales by lazy { observeDailySales(ProductDatabase.get(application).sales()) }
+
     private val authViewModel: AuthViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +51,7 @@ class MainActivity : ComponentActivity() {
                     authViewModel = authViewModel,
                     inventoryViewModel = inventory,
                     checkoutViewModel = checkout,
+                    dailySales = dailySales,
                 )
             }
         }
