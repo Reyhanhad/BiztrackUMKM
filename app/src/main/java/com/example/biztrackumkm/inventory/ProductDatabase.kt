@@ -1,6 +1,7 @@
 package com.example.biztrackumkm.inventory
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -12,6 +13,9 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Update
+import com.example.biztrackumkm.cashier.Sale
+import com.example.biztrackumkm.cashier.SaleDao
+import com.example.biztrackumkm.cashier.SaleItem
 import kotlinx.coroutines.flow.Flow
 
 /** Harga dalam rupiah utuh; barcode kosong disimpan sebagai null. */
@@ -38,9 +42,14 @@ internal interface ProductDao {
     suspend fun update(product: Product): Int
 }
 
-@Database(entities = [Product::class], version = 1)
+@Database(
+    entities = [Product::class, Sale::class, SaleItem::class],
+    version = 2,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
+)
 internal abstract class ProductDatabase : RoomDatabase() {
     abstract fun products(): ProductDao
+    abstract fun sales(): SaleDao
 
     companion object {
         @Volatile private var instance: ProductDatabase? = null

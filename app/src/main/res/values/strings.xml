@@ -63,4 +63,18 @@
     <string name="restock_action_hint">Segera lakukan pengisian stok.</string>
     <string name="restock_empty_title">Tidak ada produk dengan stok rendah</string>
     <string name="restock_empty_hint">Seluruh produk memiliki stok yang aman.</string>
+    <string name="checkout_open">Simpan penjualan</string>
+    <string name="checkout_confirm_title">Konfirmasi penjualan</string>
+    <string name="checkout_confirm_body">Simpan penjualan senilai %1$s? Stok produk akan berkurang setelah penjualan tersimpan.</string>
+    <string name="checkout_confirm">Konfirmasi</string>
+    <string name="checkout_cancel">Batal</string>
+    <string name="checkout_saving">Menyimpan penjualan…</string>
+    <string name="checkout_saved_title">Penjualan tersimpan</string>
+    <string name="checkout_saved_body">Penjualan senilai %1$s tersimpan dan stok sudah diperbarui.</string>
+    <string name="checkout_failed_title">Penjualan tidak tersimpan</string>
+    <string name="checkout_insufficient_stock">Stok %1$s tersisa %2$d pcs. Kurangi jumlah atau hapus produk dari keranjang.</string>
+    <string name="checkout_price_changed">Harga %1$s berubah. Periksa harga dan total terbaru sebelum konfirmasi lagi.</string>
+    <string name="checkout_product_unavailable">Ada produk yang tidak lagi tersedia. Periksa keranjang sebelum mencoba lagi.</string>
+    <string name="checkout_storage_error">Tidak bisa menyimpan penjualan. Stok tidak berubah. Coba lagi.</string>
+    <string name="checkout_done">OK</string>
 </resources>

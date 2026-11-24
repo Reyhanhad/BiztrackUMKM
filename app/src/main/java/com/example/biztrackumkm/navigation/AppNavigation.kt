@@ -24,6 +24,7 @@ import com.example.biztrackumkm.auth.AuthViewModel
 import com.example.biztrackumkm.auth.LoginScreen
 import com.example.biztrackumkm.auth.RegisterScreen
 import com.example.biztrackumkm.cashier.CashierScreen
+import com.example.biztrackumkm.cashier.CheckoutViewModel
 import com.example.biztrackumkm.inventory.InventoryScreen
 import com.example.biztrackumkm.inventory.InventoryViewModel
 import com.example.biztrackumkm.restock.RestockScreen
@@ -32,7 +33,8 @@ import com.example.biztrackumkm.restock.RestockViewModel
 @Composable
 internal fun AppNavigation(
     authViewModel: AuthViewModel,
-    inventoryViewModel: InventoryViewModel
+    inventoryViewModel: InventoryViewModel,
+    checkoutViewModel: CheckoutViewModel,
 ) {
     val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -76,6 +78,7 @@ internal fun AppNavigation(
                 "cashier" -> {
                     CashierScreen(
                         inventoryViewModel.products,
+                        checkoutViewModel,
                         onBack = {
                             currentScreen = "inventory"
                         }
