@@ -234,7 +234,7 @@ class InventoryCheckpointTest {
         compose.onNodeWithText("Rp23.000").assertIsDisplayed()
     }
 
-    @Test fun archivedProductStaysOutOfActiveListsAndCheckoutButKeepsItsReceipt() {
+    @Test fun archivedProductCanBeRestoredWithoutLosingProductOrReceipt() {
         val original = Product("Beras arsip", 10_000, 3, 3, "000555")
         val other = Product("Kopi aktif", 12_000, 8, 2, "000666")
         val archivedProduct = runBlocking { original.copy(id = database.products().insert(original)) }
@@ -281,6 +281,27 @@ class InventoryCheckpointTest {
             assertEquals("Beras arsip", item.productName)
             assertEquals(10_000L, item.priceRupiah)
             assertEquals(1, item.quantity)
+        }
+
+        compose.onNodeWithText("Arsip").performClick()
+        awaitText("Barang arsip")
+        awaitText(archivedProduct.name)
+        compose.onNodeWithText("Barcode: 000555").assertIsDisplayed()
+        compose.onNodeWithText("Pulihkan").performClick()
+        awaitText("Tidak ada barang yang diarsipkan.")
+        backToCatalog()
+        awaitText(archivedProduct.name)
+        compose.onNodeWithText(archivedProduct.name).assertIsDisplayed()
+
+        val restored = archivedProduct.copy(stock = 2)
+        runBlocking {
+            val products = database.products()
+            assertEquals(listOf(activeProduct, restored), products.observeProducts().first())
+            assertEquals(restored, products.findByBarcode("000555"))
+            assertEquals(listOf(restored), RestockViewModel(products.observeProducts()).lowStockProducts.first())
+            val receipt = checkNotNull(database.sales().findReceipt(sale.id))
+            assertEquals(archivedProduct.id, receipt.items.single().productId)
+            assertEquals("10000", receipt.sale.totalRupiah)
         }
     }
 }

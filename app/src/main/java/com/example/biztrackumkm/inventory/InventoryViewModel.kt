@@ -26,6 +26,9 @@ internal enum class BarcodeLookupResult { Opened, Archived, Ignored }
 
 internal class InventoryViewModel(private val dao: ProductDao) : ViewModel() {
     val products = dao.observeProducts()
+    val archivedProducts = dao.observeArchivedProducts()
+
+    suspend fun restoreArchivedProduct(id: Long) = dao.restoreArchivedProduct(id)
 
     private val _form = MutableStateFlow<ProductForm?>(null)
     val form = _form.asStateFlow()

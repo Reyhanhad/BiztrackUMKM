@@ -27,6 +27,11 @@
     <string name="inventory_archive_confirm">Arsipkan</string>
     <string name="inventory_archive_cancel">Batal</string>
     <string name="inventory_archive_ok">Mengerti</string>
+    <string name="inventory_archive_open">Arsip</string>
+    <string name="inventory_archive_list">Barang arsip</string>
+    <string name="inventory_archive_empty">Tidak ada barang yang diarsipkan.</string>
+    <string name="inventory_restore">Pulihkan</string>
+    <string name="inventory_restore_error">Barang belum bisa dipulihkan. Coba lagi.</string>
     <string name="inventory_archived_barcode_title">Barcode milik barang arsip</string>
     <string name="inventory_archived_barcode_hint">Kode ini sudah dipakai oleh barang yang diarsipkan dan tidak bisa didaftarkan ulang.</string>
     <string name="inventory_back">Kembali</string>

@@ -46,6 +46,7 @@ internal fun InventoryScreen(
     val form by viewModel.form.collectAsStateWithLifecycle()
     val current = form
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
+    var archiveOpen by rememberSaveable { mutableStateOf(false) }
     var archivedBarcodeNotice by rememberSaveable { mutableStateOf(false) }
 
     suspend fun lookupBarcode(barcode: String) {
@@ -59,6 +60,11 @@ internal fun InventoryScreen(
             onLookup = ::lookupBarcode,
             onClose = { scannerOpen = false },
         )
+        return
+    }
+
+    if (archiveOpen) {
+        ArchivedProductsScreen(viewModel, onBack = { archiveOpen = false })
         return
     }
 
@@ -125,6 +131,7 @@ internal fun InventoryScreen(
                 onBarcodeLookup = ::lookupBarcode,
                 onScanBarcode = { scannerOpen = true },
                 onOpenRestock = onOpenRestock,
+                onOpenArchive = { archiveOpen = true },
                 modifier = Modifier.padding(insets)
             )
         } else {
@@ -149,6 +156,7 @@ private fun Catalog(
     onBarcodeLookup: suspend (String) -> Unit,
     onScanBarcode: () -> Unit,
     onOpenRestock: () -> Unit,
+    onOpenArchive: () -> Unit,
     modifier: Modifier
 ) {
     val rupiah = remember {
@@ -174,10 +182,19 @@ private fun Catalog(
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    stringResource(R.string.inventory_title),
-                    style = MaterialTheme.typography.headlineSmall
-                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.inventory_title),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                    TextButton(onClick = onOpenArchive) {
+                        Text(stringResource(R.string.inventory_archive_open))
+                    }
+                }
                 Text(
                     stringResource(R.string.inventory_subtitle),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
