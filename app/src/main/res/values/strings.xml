@@ -21,6 +21,14 @@
     <string name="inventory_edit">Ubah barang</string>
     <string name="inventory_edit_action">Ubah</string>
     <string name="inventory_edit_hint">Perbarui data barang dan jumlah stok saat ini.</string>
+    <string name="inventory_archive">Arsipkan barang</string>
+    <string name="inventory_archive_title">Arsipkan barang?</string>
+    <string name="inventory_archive_hint">Barang tidak lagi muncul di katalog atau bisa dijual. Nota lama tetap tersimpan.</string>
+    <string name="inventory_archive_confirm">Arsipkan</string>
+    <string name="inventory_archive_cancel">Batal</string>
+    <string name="inventory_archive_ok">Mengerti</string>
+    <string name="inventory_archived_barcode_title">Barcode milik barang arsip</string>
+    <string name="inventory_archived_barcode_hint">Kode ini sudah dipakai oleh barang yang diarsipkan dan tidak bisa didaftarkan ulang.</string>
     <string name="inventory_back">Kembali</string>
     <string name="inventory_save">Simpan barang</string>
     <string name="inventory_saving">Menyimpan…</string>

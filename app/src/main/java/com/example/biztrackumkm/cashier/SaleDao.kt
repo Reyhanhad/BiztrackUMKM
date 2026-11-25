@@ -96,7 +96,7 @@ internal abstract class SaleDao {
     @Query("SELECT * FROM sales WHERE id = :saleId")
     abstract suspend fun findReceipt(saleId: Long): SaleReceipt?
 
-    @Query("SELECT * FROM products WHERE id = :productId")
+    @Query("SELECT * FROM products WHERE id = :productId AND archived = 0")
     protected abstract suspend fun findProduct(productId: Long): Product?
 
     @Query("UPDATE products SET stock = stock - :quantity WHERE id = :productId")

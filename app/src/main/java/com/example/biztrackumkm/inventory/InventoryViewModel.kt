@@ -22,6 +22,8 @@ internal data class ProductForm(
 
 internal enum class ProductProblem { Name, Price, Stock, MinimumStock, DuplicateBarcode, NotFound, Storage }
 
+internal enum class BarcodeLookupResult { Opened, Archived, Ignored }
+
 internal class InventoryViewModel(private val dao: ProductDao) : ViewModel() {
     val products = dao.observeProducts()
 
@@ -33,7 +35,7 @@ internal class InventoryViewModel(private val dao: ProductDao) : ViewModel() {
     }
 
     fun openEditForm(product: Product) {
-        if (_form.value != null) return
+        if (_form.value != null || product.archived) return
         _form.value = ProductForm(
             name = product.name,
             price = product.priceRupiah.toString(),
@@ -44,15 +46,14 @@ internal class InventoryViewModel(private val dao: ProductDao) : ViewModel() {
         )
     }
 
-    suspend fun openBarcode(barcode: String) {
+    suspend fun openBarcode(barcode: String): BarcodeLookupResult {
         val code = barcode.trim()
-        if (code.isEmpty() || _form.value != null) return
+        if (code.isEmpty() || _form.value != null) return BarcodeLookupResult.Ignored
         val product = dao.findByBarcode(code)
-        if (product != null) {
-            openEditForm(product)
-        } else if (_form.value == null) {
-            _form.value = ProductForm(barcode = code)
-        }
+        if (_form.value != null) return BarcodeLookupResult.Ignored
+        if (product?.archived == true) return BarcodeLookupResult.Archived
+        if (product != null) openEditForm(product) else _form.value = ProductForm(barcode = code)
+        return BarcodeLookupResult.Opened
     }
 
     fun closeForm() {
@@ -62,6 +63,22 @@ internal class InventoryViewModel(private val dao: ProductDao) : ViewModel() {
     fun changeForm(change: ProductForm.() -> ProductForm) {
         val current = _form.value ?: return
         if (!current.saving) _form.value = current.change().copy(problem = null)
+    }
+
+    fun archiveProduct() {
+        val current = _form.value ?: return
+        val id = current.productId ?: return
+        if (current.saving) return
+        _form.value = current.copy(problem = null, saving = true)
+        viewModelScope.launch {
+            val problem = try {
+                if (dao.archive(id) == 0) ProductProblem.NotFound else null
+            } catch (error: SQLiteException) {
+                Log.e("Inventory", "Gagal mengarsipkan produk", error)
+                ProductProblem.Storage
+            }
+            _form.value = problem?.let { current.copy(problem = it) }
+        }
     }
 
     fun saveProduct() {
