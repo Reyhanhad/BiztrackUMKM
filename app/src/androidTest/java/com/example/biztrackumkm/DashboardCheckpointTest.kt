@@ -10,7 +10,6 @@ import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.biztrackumkm.cashier.CartLine
 import com.example.biztrackumkm.cashier.CheckoutViewModel
-import com.example.biztrackumkm.dashboard.observeDailySales
 import com.example.biztrackumkm.dashboard.salesForDay
 import com.example.biztrackumkm.inventory.InventoryViewModel
 import com.example.biztrackumkm.inventory.Product
@@ -57,14 +56,13 @@ class DashboardCheckpointTest {
         val end = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
         seedSale(start - 1, "99999")
         seedSale(end, "77777")
-        val sales = observeDailySales(db.sales())
         val inventory = InventoryViewModel(db.products())
         val checkout = CheckoutViewModel(db.sales())
         val product = Product("Gula", 14000, 3, 2, null)
         val stored = runBlocking { product.copy(id = db.products().insert(product)) }
         compose.setContent {
             BiztrackUMKMTheme {
-                OwnerNavigation(inventory, checkout, sales, onLogout = {})
+                OwnerNavigation(inventory, checkout, db.sales(), onLogout = {})
             }
         }
         shown("Rp 0")

@@ -119,4 +119,18 @@
     <string name="dashboard_inventory">Inventaris</string>
     <string name="dashboard_alerts">Lihat peringatan</string>
     <string name="dashboard_stock_count">%1$d produk</string>
+    <string name="report_title">Laporan penjualan</string>
+    <string name="report_change_period">Ubah periode</string>
+    <string name="report_period_label">%1$s – %2$s</string>
+    <string name="report_revenue">Omzet periode ini</string>
+    <string name="report_transactions">%1$s transaksi</string>
+    <string name="report_ranking">Produk terlaris</string>
+    <string name="report_empty">Belum ada transaksi pada periode ini.</string>
+    <string name="report_no_items">Tidak ada detail produk pada transaksi periode ini.</string>
+    <string name="report_units">%1$s unit</string>
+    <string name="report_start">Tanggal awal</string>
+    <string name="report_end">Tanggal akhir</string>
+    <string name="report_date_hint">Masukkan tanggal dalam format HH/BB/TTTT.</string>
+    <string name="report_reversed">Tanggal akhir harus sama atau sesudah tanggal awal.</string>
+    <string name="report_apply">Terapkan</string>
 </resources>

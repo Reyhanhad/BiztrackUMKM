@@ -26,20 +26,21 @@ import com.example.biztrackumkm.auth.LoginScreen
 import com.example.biztrackumkm.auth.RegisterScreen
 import com.example.biztrackumkm.cashier.CashierScreen
 import com.example.biztrackumkm.cashier.CheckoutViewModel
-import com.example.biztrackumkm.dashboard.DailySales
+import com.example.biztrackumkm.cashier.SaleDao
+import com.example.biztrackumkm.dashboard.observeDailySales
 import com.example.biztrackumkm.dashboard.DashboardScreen
 import com.example.biztrackumkm.inventory.InventoryScreen
 import com.example.biztrackumkm.inventory.InventoryViewModel
 import com.example.biztrackumkm.restock.RestockScreen
 import com.example.biztrackumkm.restock.RestockViewModel
-import kotlinx.coroutines.flow.Flow
+import com.example.biztrackumkm.report.SalesReportScreen
 
 @Composable
 internal fun AppNavigation(
     authViewModel: AuthViewModel,
     inventoryViewModel: InventoryViewModel,
     checkoutViewModel: CheckoutViewModel,
-    dailySales: Flow<DailySales>,
+    sales: SaleDao,
 ) {
     val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -71,7 +72,7 @@ internal fun AppNavigation(
         AuthScreenState.Authenticated -> OwnerNavigation(
             inventory = inventoryViewModel,
             checkout = checkoutViewModel,
-            dailySales = dailySales,
+            sales = sales,
             onLogout = authViewModel::logout,
         )
     }
@@ -81,7 +82,7 @@ internal fun AppNavigation(
 internal fun OwnerNavigation(
     inventory: InventoryViewModel,
     checkout: CheckoutViewModel,
-    dailySales: Flow<DailySales>,
+    sales: SaleDao,
     onLogout: () -> Unit,
 ) {
     val restock = remember(inventory) { RestockViewModel(inventory.products) }
@@ -96,13 +97,15 @@ internal fun OwnerNavigation(
     BackHandler(enabled = screen == "inventory") { screen = "dashboard" }
     when (screen) {
         "dashboard" -> DashboardScreen(
-            dailySales = dailySales,
+            dailySales = remember(sales) { observeDailySales(sales) },
+            onReport = { screen = "report" },
             restock = restock,
             onCashier = { openFromHere("cashier") },
             onInventory = { screen = "inventory" },
             onRestock = { openFromHere("restock") },
             onLogout = onLogout,
         )
+        "report" -> SalesReportScreen(sales, onBack = { screen = "dashboard" })
         "cashier" -> CashierScreen(inventory.products, checkout, onBack = { screen = returnScreen })
         "restock" -> RestockScreen(restock, onBack = { screen = returnScreen })
         "inventory" -> InventoryScreen(
