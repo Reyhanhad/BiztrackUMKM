@@ -164,10 +164,7 @@ internal fun OwnerNavigation(
                     when (tab) {
                         OwnerTab.Home -> DashboardScreen(
                             dailySales = remember(sales) { observeDailySales(sales) },
-                            onReport = { selectTab(OwnerTab.Report) },
                             restock = restock,
-                            onCashier = ::openCashier,
-                            onInventory = { selectTab(OwnerTab.Inventory) },
                             onScanProduct = {
                                 inventory.openSearchScanner()
                                 selectTab(OwnerTab.Inventory)

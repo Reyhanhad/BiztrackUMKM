@@ -135,7 +135,6 @@
     <string name="dashboard_title">Dashboard harian</string>
     <string name="dashboard_revenue">Omzet hari ini</string>
     <string name="dashboard_transactions">Jumlah transaksi</string>
-    <string name="dashboard_cashier">Buka kasir</string>
     <string name="dashboard_inventory">Inventaris</string>
     <string name="dashboard_alerts">Lihat peringatan</string>
     <string name="dashboard_stock_count">%1$d produk</string>
