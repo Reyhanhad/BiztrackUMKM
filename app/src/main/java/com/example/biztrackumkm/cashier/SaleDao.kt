@@ -2,11 +2,13 @@ package com.example.biztrackumkm.cashier
 
 import androidx.room.Dao
 import androidx.room.Entity
+import androidx.room.Embedded
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import androidx.room.Relation
 import androidx.room.Transaction
 import com.example.biztrackumkm.inventory.Product
 import com.example.biztrackumkm.report.ReportSale
@@ -34,6 +36,14 @@ internal data class SaleItem(
     val quantity: Int,
     val subtotalRupiah: String,
 )
+
+internal data class SaleReceipt(
+    @Embedded val sale: Sale,
+    @Relation(parentColumn = "id", entityColumn = "saleId")
+    val items: List<SaleItem>,
+)
+
+internal data class SavedSale(val id: Long, val total: Number)
 
 internal data class CartLine(val product: Product, val quantity: Int) {
     val subtotal: Number = if (product.priceRupiah <= Long.MAX_VALUE / quantity) {
@@ -79,6 +89,13 @@ internal abstract class SaleDao {
     """)
     abstract fun observeReportSales(start: Long, end: Long): Flow<List<ReportSale>>
 
+    @Query("SELECT * FROM sales ORDER BY soldAtMillis DESC, id DESC")
+    abstract fun observeSales(): Flow<List<Sale>>
+
+    @Transaction
+    @Query("SELECT * FROM sales WHERE id = :saleId")
+    abstract suspend fun findReceipt(saleId: Long): SaleReceipt?
+
     @Query("SELECT * FROM products WHERE id = :productId")
     protected abstract suspend fun findProduct(productId: Long): Product?
 
@@ -92,7 +109,7 @@ internal abstract class SaleDao {
     protected abstract suspend fun insertItem(item: SaleItem)
 
     @Transaction
-    open suspend fun saveSale(lines: List<CartLine>): Number {
+    open suspend fun saveSale(lines: List<CartLine>): SavedSale {
         require(lines.isNotEmpty())
         val total = cartTotal(lines)
         val saleId = insertSale(Sale(System.currentTimeMillis(), total.toString()))
@@ -110,6 +127,6 @@ internal abstract class SaleDao {
                 SaleItem(saleId, current.id, current.name, current.priceRupiah, line.quantity, line.subtotal.toString()),
             )
         }
-        return total
+        return SavedSale(saleId, total)
     }
 }

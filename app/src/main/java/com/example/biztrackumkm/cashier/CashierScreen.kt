@@ -78,16 +78,27 @@ internal fun CashierScreen(
     checkout: CheckoutViewModel,
     onBack: () -> Unit,
 ) {
-    val catalog by products.collectAsStateWithLifecycle<List<Product>?>(initialValue = null)
     val quantities = rememberSaveable(saver = CartQuantitiesSaver) { mutableStateMapOf<Long, Int>() }
+    var pickerOpen by rememberSaveable { mutableStateOf(false) }
+    var confirmOpen by rememberSaveable { mutableStateOf(false) }
+    var historyOpen by rememberSaveable { mutableStateOf(false) }
+    var receiptId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val openReceiptId = receiptId
+    if (openReceiptId != null) {
+        SaleReceiptScreen(checkout, openReceiptId, onBack = { receiptId = null })
+        return
+    }
+    if (historyOpen) {
+        SaleHistoryScreen(checkout, onOpenReceipt = { receiptId = it }, onBack = { historyOpen = false })
+        return
+    }
+    val catalog by products.collectAsStateWithLifecycle<List<Product>?>(initialValue = null)
     val selected = quantities.toMap()
     val lines = remember(catalog, selected) {
         catalog.orEmpty().mapNotNull { product ->
             selected[product.id]?.let { CartLine(product, it) }
         }
     }
-    var pickerOpen by rememberSaveable { mutableStateOf(false) }
-    var confirmOpen by rememberSaveable { mutableStateOf(false) }
     val checkoutState by checkout.state.collectAsStateWithLifecycle()
     val canCheckout = lines.isNotEmpty() && lines.size == selected.size
     val rupiah = remember { NumberFormat.getIntegerInstance(Locale.forLanguageTag("id-ID")) }
@@ -110,6 +121,11 @@ internal fun CashierScreen(
                 navigationIcon = {
                     TextButton(onClick = onBack, enabled = checkoutState == CheckoutState.Idle) {
                         Text(stringResource(R.string.cashier_back))
+                    }
+                },
+                actions = {
+                    TextButton(onClick = { historyOpen = true }, enabled = checkoutState == CheckoutState.Idle) {
+                        Text(stringResource(R.string.receipt_history_action))
                     }
                 },
             )
@@ -206,10 +222,19 @@ internal fun CashierScreen(
         )
     }
     if (checkoutState != CheckoutState.Idle) {
-        CheckoutResultDialog(checkoutState, rupiah) {
+        fun dismissResult() {
             if (checkoutState is CheckoutState.Saved) quantities.clear()
             checkout.dismissResult()
         }
+        CheckoutResultDialog(
+            checkoutState,
+            rupiah,
+            onDismiss = ::dismissResult,
+            onOpenReceipt = { id ->
+                dismissResult()
+                receiptId = id
+            },
+        )
     }
 }
 
@@ -243,7 +268,12 @@ private fun CartTotal(total: String, canCheckout: Boolean, onCheckout: () -> Uni
 }
 
 @Composable
-private fun CheckoutResultDialog(state: CheckoutState, rupiah: NumberFormat, onDismiss: () -> Unit) {
+private fun CheckoutResultDialog(
+    state: CheckoutState,
+    rupiah: NumberFormat,
+    onDismiss: () -> Unit,
+    onOpenReceipt: (Long) -> Unit,
+) {
     val saving = state == CheckoutState.Saving
     val title = when (state) {
         CheckoutState.Idle -> return
@@ -260,7 +290,7 @@ private fun CheckoutResultDialog(state: CheckoutState, rupiah: NumberFormat, onD
                 CheckoutState.Idle -> Unit
                 CheckoutState.Saving -> CircularProgressIndicator()
                 is CheckoutState.Saved -> {
-                    val amount = stringResource(R.string.cashier_amount, rupiah.format(state.total))
+                    val amount = stringResource(R.string.cashier_amount, rupiah.format(state.sale.total))
                     Text(stringResource(R.string.checkout_saved_body, amount))
                 }
                 is CheckoutState.Rejected -> Text(
@@ -278,6 +308,13 @@ private fun CheckoutResultDialog(state: CheckoutState, rupiah: NumberFormat, onD
         confirmButton = {
             if (!saving) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.checkout_done)) }
+            }
+        },
+        dismissButton = {
+            if (state is CheckoutState.Saved) {
+                TextButton(onClick = { onOpenReceipt(state.sale.id) }) {
+                    Text(stringResource(R.string.receipt_open))
+                }
             }
         },
     )

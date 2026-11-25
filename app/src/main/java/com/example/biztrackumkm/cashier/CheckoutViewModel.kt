@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 internal sealed interface CheckoutState {
     data object Idle : CheckoutState
     data object Saving : CheckoutState
-    data class Saved(val total: Number) : CheckoutState
+    data class Saved(val sale: SavedSale) : CheckoutState
     data class Rejected(val reason: SaleRejection) : CheckoutState
     data object StorageError : CheckoutState
 }
@@ -19,6 +19,9 @@ internal sealed interface CheckoutState {
 internal class CheckoutViewModel(private val sales: SaleDao) : ViewModel() {
     private val _state = MutableStateFlow<CheckoutState>(CheckoutState.Idle)
     val state = _state.asStateFlow()
+    val history = sales.observeSales()
+
+    suspend fun findReceipt(saleId: Long): SaleReceipt? = sales.findReceipt(saleId)
 
     fun save(lines: List<CartLine>) {
         if (lines.isEmpty() || _state.value != CheckoutState.Idle) return
