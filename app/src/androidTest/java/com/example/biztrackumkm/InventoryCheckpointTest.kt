@@ -21,16 +21,21 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.AnnotatedString
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.biztrackumkm.cashier.CartLine
+import com.example.biztrackumkm.cashier.SaleRejected
+import com.example.biztrackumkm.cashier.SaleRejection
 import com.example.biztrackumkm.inventory.InventoryScreen
 import com.example.biztrackumkm.inventory.InventoryViewModel
 import com.example.biztrackumkm.inventory.Product
 import com.example.biztrackumkm.inventory.ProductDatabase
+import com.example.biztrackumkm.restock.RestockViewModel
 import com.example.biztrackumkm.ui.theme.BiztrackUMKMTheme
 import java.util.UUID
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -227,5 +232,55 @@ class InventoryCheckpointTest {
         awaitText("Ubah barang")
         field("Nama produk").assert(hasText("Oatmeal"))
         compose.onNodeWithText("Rp23.000").assertIsDisplayed()
+    }
+
+    @Test fun archivedProductStaysOutOfActiveListsAndCheckoutButKeepsItsReceipt() {
+        val original = Product("Beras arsip", 10_000, 3, 3, "000555")
+        val other = Product("Kopi aktif", 12_000, 8, 2, "000666")
+        val archivedProduct = runBlocking { original.copy(id = database.products().insert(original)) }
+        val activeProduct = runBlocking { other.copy(id = database.products().insert(other)) }
+        val sale = runBlocking { database.sales().saveSale(listOf(CartLine(archivedProduct, 1))) }
+
+        awaitText(archivedProduct.name)
+        compose.onNodeWithText(archivedProduct.name).performClick()
+        compose.onNodeWithText("Arsipkan barang").performScrollTo().performClick()
+        compose.onNodeWithText("Arsipkan").performClick()
+        awaitText("Katalog & stok")
+
+        closeDatabase()
+        openDatabase()
+        awaitText(activeProduct.name)
+        compose.onNodeWithText(archivedProduct.name).assertDoesNotExist()
+        field("Cari barcode produk").performTextInput("000555")
+        compose.onNodeWithText("Cari").performClick()
+        awaitText("Barcode milik barang arsip")
+        compose.onNodeWithText("Isi data barang dan stok awal.").assertDoesNotExist()
+        compose.onNodeWithText("Mengerti").performClick()
+
+        val rejection = assertThrows(SaleRejected::class.java) {
+            runBlocking {
+                database.sales().saveSale(listOf(CartLine(activeProduct, 1), CartLine(archivedProduct, 1)))
+            }
+        }
+        assertEquals(SaleRejection.ProductUnavailable, rejection.reason)
+        runBlocking {
+            val products = database.products()
+            assertEquals(listOf(activeProduct), products.observeProducts().first())
+            assertEquals(emptyList<Product>(), RestockViewModel(products.observeProducts()).lowStockProducts.first())
+            assertEquals(
+                archivedProduct.copy(stock = 2, archived = true),
+                products.findByBarcode("000555"),
+            )
+            assertEquals(-1L, products.insert(original))
+
+            val sales = database.sales()
+            assertEquals(listOf(sale.id), sales.observeSales().first().map { it.id })
+            assertEquals(listOf(sale.id), sales.observeReportSales(0L, Long.MAX_VALUE).first().map { it.id })
+            val item = checkNotNull(sales.findReceipt(sale.id)).items.single()
+            assertEquals(archivedProduct.id, item.productId)
+            assertEquals("Beras arsip", item.productName)
+            assertEquals(10_000L, item.priceRupiah)
+            assertEquals(1, item.quantity)
+        }
     }
 }

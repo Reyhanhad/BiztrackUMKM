@@ -79,11 +79,23 @@ internal fun AppNavigation(
                     onLogout = authViewModel::logout,
                 )
             } else {
+                var showRegisterCashier by rememberSaveable { mutableStateOf(false) }
+                if (showRegisterCashier) {
+                    RegisterCashierDialog(
+                        uiState = uiState,
+                        onRegisterCashier = authViewModel::registerCashier,
+                        onDismiss = {
+                            showRegisterCashier = false
+                            authViewModel.clearCashierMessage()
+                        },
+                        onClearMessage = authViewModel::clearCashierMessage,
+                    )
+                }
                 OwnerNavigation(
                     inventory = inventoryViewModel,
                     checkout = checkoutViewModel,
                     sales = sales,
-                    authViewModel = authViewModel,
+                    onAddCashier = { showRegisterCashier = true },
                     onLogout = authViewModel::logout,
                 )
             }
@@ -109,27 +121,12 @@ internal fun OwnerNavigation(
     inventory: InventoryViewModel,
     checkout: CheckoutViewModel,
     sales: SaleDao,
-    authViewModel: AuthViewModel,
+    onAddCashier: (() -> Unit)?,
     onLogout: () -> Unit,
 ) {
     val restock = remember(inventory) { RestockViewModel(inventory.products) }
     var screen by rememberSaveable { mutableStateOf("dashboard") }
     var returnScreen by rememberSaveable { mutableStateOf("dashboard") }
-    var showRegisterCashier by rememberSaveable { mutableStateOf(false) }
-
-    val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
-
-    if (showRegisterCashier) {
-        RegisterCashierDialog(
-            uiState = uiState,
-            onRegisterCashier = authViewModel::registerCashier,
-            onDismiss = {
-                showRegisterCashier = false
-                authViewModel.clearCashierMessage()
-            },
-            onClearMessage = authViewModel::clearCashierMessage
-        )
-    }
 
     fun openFromHere(destination: String) {
         returnScreen = screen
@@ -146,7 +143,7 @@ internal fun OwnerNavigation(
             onInventory = { screen = "inventory" },
             onRestock = { openFromHere("restock") },
             onLogout = onLogout,
-            onAddCashier = { showRegisterCashier = true },
+            onAddCashier = onAddCashier,
         )
         "report" -> SalesReportScreen(sales, onBack = { screen = "dashboard" })
         "cashier" -> CashierScreen(inventory.products, checkout, onBack = { screen = returnScreen })

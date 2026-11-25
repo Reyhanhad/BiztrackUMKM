@@ -95,7 +95,11 @@ class SalesReportCheckpointTest {
         seedPeriod()
         val inventory = InventoryViewModel(db.products())
         val checkout = CheckoutViewModel(db.sales())
-        compose.setContent { BiztrackUMKMTheme { OwnerNavigation(inventory, checkout, db.sales(), onLogout = {}) } }
+        compose.setContent {
+            BiztrackUMKMTheme {
+                OwnerNavigation(inventory, checkout, db.sales(), onAddCashier = null, onLogout = {})
+            }
+        }
         compose.onNodeWithText("Laporan penjualan").performClick()
         fun click(text: String) = compose.onNodeWithText(text).performClick()
         fun dates(start: String, end: String) {

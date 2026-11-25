@@ -62,7 +62,7 @@ class DashboardCheckpointTest {
         val stored = runBlocking { product.copy(id = db.products().insert(product)) }
         compose.setContent {
             BiztrackUMKMTheme {
-                OwnerNavigation(inventory, checkout, db.sales(), onLogout = {})
+                OwnerNavigation(inventory, checkout, db.sales(), onAddCashier = null, onLogout = {})
             }
         }
         shown("Rp 0")

@@ -46,9 +46,17 @@ internal fun InventoryScreen(
     val form by viewModel.form.collectAsStateWithLifecycle()
     val current = form
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
+    var archivedBarcodeNotice by rememberSaveable { mutableStateOf(false) }
+
+    suspend fun lookupBarcode(barcode: String) {
+        if (viewModel.openBarcode(barcode) == BarcodeLookupResult.Archived) {
+            archivedBarcodeNotice = true
+        }
+    }
+
     if (scannerOpen && current == null) {
         BarcodeScannerScreen(
-            onLookup = viewModel::openBarcode,
+            onLookup = ::lookupBarcode,
             onClose = { scannerOpen = false },
         )
         return
@@ -61,6 +69,19 @@ internal fun InventoryScreen(
         enabled = current != null,
         onBack = viewModel::closeForm
     )
+
+    if (archivedBarcodeNotice) {
+        AlertDialog(
+            onDismissRequest = { archivedBarcodeNotice = false },
+            title = { Text(stringResource(R.string.inventory_archived_barcode_title)) },
+            text = { Text(stringResource(R.string.inventory_archived_barcode_hint)) },
+            confirmButton = {
+                TextButton(onClick = { archivedBarcodeNotice = false }) {
+                    Text(stringResource(R.string.inventory_archive_ok))
+                }
+            },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -101,7 +122,7 @@ internal fun InventoryScreen(
                 products = products,
                 onAdd = viewModel::openForm,
                 onEdit = viewModel::openEditForm,
-                onBarcodeLookup = viewModel::openBarcode,
+                onBarcodeLookup = ::lookupBarcode,
                 onScanBarcode = { scannerOpen = true },
                 onOpenRestock = onOpenRestock,
                 modifier = Modifier.padding(insets)
@@ -111,6 +132,7 @@ internal fun InventoryScreen(
                 current,
                 viewModel::changeForm,
                 viewModel::saveProduct,
+                viewModel::archiveProduct,
                 Modifier.padding(insets)
                     .consumeWindowInsets(insets)
                     .imePadding()
@@ -442,9 +464,32 @@ private fun ProductEditor(
     form: ProductForm,
     onChange: (ProductForm.() -> ProductForm) -> Unit,
     onSave: () -> Unit,
+    onArchive: () -> Unit,
     modifier: Modifier
 ) {
     val editing = form.productId != null
+    var confirmArchive by rememberSaveable(form.productId) { mutableStateOf(false) }
+
+    if (editing && confirmArchive) {
+        AlertDialog(
+            onDismissRequest = { confirmArchive = false },
+            title = { Text(stringResource(R.string.inventory_archive_title)) },
+            text = { Text(stringResource(R.string.inventory_archive_hint)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmArchive = false
+                    onArchive()
+                }) {
+                    Text(stringResource(R.string.inventory_archive_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmArchive = false }) {
+                    Text(stringResource(R.string.inventory_archive_cancel))
+                }
+            },
+        )
+    }
 
     Column(
         modifier = modifier
@@ -535,6 +580,15 @@ private fun ProductEditor(
                     else R.string.inventory_save
                 )
             )
+        }
+        if (editing) {
+            TextButton(
+                onClick = { confirmArchive = true },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !form.saving,
+            ) {
+                Text(stringResource(R.string.inventory_archive), color = MaterialTheme.colorScheme.error)
+            }
         }
     }
 }
