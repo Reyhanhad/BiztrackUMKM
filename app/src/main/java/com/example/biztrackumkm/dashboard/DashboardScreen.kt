@@ -28,6 +28,7 @@ internal fun DashboardScreen(
     onInventory: () -> Unit,
     onRestock: () -> Unit,
     onLogout: () -> Unit,
+    onReport: () -> Unit,
 ) {
     val sales by dailySales.collectAsStateWithLifecycle(initialValue = null)
     val lowStock by restock.lowStockProducts.collectAsStateWithLifecycle(initialValue = null)
@@ -65,6 +66,7 @@ internal fun DashboardScreen(
                             Text(today.count.toString(), style = MaterialTheme.typography.titleMedium)
                         }
                     }
+                    TextButton(onClick = onReport) { Text(stringResource(R.string.report_title)) }
                 }
             }
 

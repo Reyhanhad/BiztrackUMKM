@@ -9,6 +9,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Transaction
 import com.example.biztrackumkm.inventory.Product
+import com.example.biztrackumkm.report.ReportSale
 import java.math.BigInteger
 import kotlinx.coroutines.flow.Flow
 
@@ -69,6 +70,14 @@ internal class SaleRejected(val reason: SaleRejection) : RuntimeException()
 internal abstract class SaleDao {
     @Query("SELECT totalRupiah FROM sales WHERE soldAtMillis >= :start AND soldAtMillis < :end")
     abstract fun observeTotals(start: Long, end: Long): Flow<List<String>>
+
+    @Transaction
+    @Query("""
+        SELECT id, totalRupiah FROM sales
+        WHERE soldAtMillis >= :start AND soldAtMillis < :end
+        ORDER BY soldAtMillis DESC, id DESC
+    """)
+    abstract fun observeReportSales(start: Long, end: Long): Flow<List<ReportSale>>
 
     @Query("SELECT * FROM products WHERE id = :productId")
     protected abstract suspend fun findProduct(productId: Long): Product?
