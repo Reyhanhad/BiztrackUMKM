@@ -1,5 +1,6 @@
 package com.example.biztrackumkm.cashier
 
+import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.biztrackumkm.R
+import com.example.biztrackumkm.inventory.BarcodePreview
 import com.example.biztrackumkm.inventory.Product
 import java.text.NumberFormat
 import java.util.Locale
@@ -80,6 +82,7 @@ internal fun CashierScreen(
 ) {
     val quantities = rememberSaveable(saver = CartQuantitiesSaver) { mutableStateMapOf<Long, Int>() }
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
+    var scannerOpen by rememberSaveable { mutableStateOf(false) }
     var confirmOpen by rememberSaveable { mutableStateOf(false) }
     var historyOpen by rememberSaveable { mutableStateOf(false) }
     var receiptId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -110,78 +113,133 @@ internal fun CashierScreen(
     }
     fun decrement(id: Long) {
         val quantity = quantities[id] ?: return
-        if (quantity > 1) quantities[id] = quantity - 1
+        if (quantity == 1) quantities.remove(id) else quantities[id] = quantity - 1
     }
-    BackHandler { if (checkout.state.value == CheckoutState.Idle) onBack() }
+    fun leave() {
+        if (checkout.state.value != CheckoutState.Idle) return
+        if (scannerOpen) scannerOpen = false else onBack()
+    }
+    BackHandler(onBack = ::leave)
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.cashier_title)) },
+                title = {
+                    Text(stringResource(if (scannerOpen) R.string.cashier_scan_title else R.string.cashier_title))
+                },
                 navigationIcon = {
-                    TextButton(onClick = onBack, enabled = checkoutState == CheckoutState.Idle) {
+                    TextButton(onClick = ::leave, enabled = checkoutState == CheckoutState.Idle) {
                         Text(stringResource(R.string.cashier_back))
                     }
                 },
                 actions = {
-                    TextButton(onClick = { historyOpen = true }, enabled = checkoutState == CheckoutState.Idle) {
-                        Text(stringResource(R.string.receipt_history_action))
+                    TextButton(
+                        onClick = {
+                            if (scannerOpen) {
+                                scannerOpen = false
+                                pickerOpen = true
+                            } else {
+                                historyOpen = true
+                            }
+                        },
+                        enabled = checkoutState == CheckoutState.Idle,
+                    ) {
+                        Text(stringResource(if (scannerOpen) R.string.cashier_search else R.string.receipt_history_action))
                     }
                 },
             )
         },
         bottomBar = {
-            CartTotal(total, canCheckout && checkoutState == CheckoutState.Idle) { confirmOpen = true }
+            CartTotal(total, canCheckout && checkoutState == CheckoutState.Idle) {
+                scannerOpen = false
+                confirmOpen = true
+            }
         },
     ) { insets ->
-        LazyColumn(
-            modifier = Modifier.padding(insets).consumeWindowInsets(insets).fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item {
-                OutlinedButton(
-                    onClick = { pickerOpen = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = catalog != null,
-                ) {
-                    Text(stringResource(R.string.cashier_search))
+        Column(Modifier.padding(insets).consumeWindowInsets(insets).fillMaxSize()) {
+            if (scannerOpen) {
+                val gate = remember { BarcodeRepeatGate() }
+                val barcodeProducts = remember(catalog) {
+                    buildMap {
+                        for (product in catalog.orEmpty()) {
+                            val barcode = product.barcode
+                            if (!product.archived && barcode != null) put(barcode, product.id)
+                        }
+                    }
                 }
+                BarcodePreview(
+                    modifier = Modifier.fillMaxWidth().weight(0.44f),
+                    onFrame = { code ->
+                        if (scannerOpen) {
+                            val accepted = gate.acceptFrame(code, SystemClock.elapsedRealtime())
+                            val id = accepted?.let { barcodeProducts[it] }
+                            if (id != null && id !in quantities) quantities[id] = 1
+                        }
+                    },
+                )
             }
-            item {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        stringResource(R.string.cashier_cart),
-                        Modifier.weight(1f),
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                    Text(
-                        stringResource(R.string.cashier_count, lines.size, unitCount),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(0.56f),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (!scannerOpen) {
+                    item {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            OutlinedButton(
+                                onClick = { pickerOpen = true },
+                                modifier = Modifier.weight(1f),
+                                enabled = catalog != null,
+                            ) {
+                                Text(stringResource(R.string.cashier_search))
+                            }
+                            OutlinedButton(
+                                onClick = { scannerOpen = true },
+                                enabled = catalog != null,
+                            ) {
+                                Text(stringResource(R.string.barcode_scan_open))
+                            }
+                        }
+                    }
                 }
-            }
-            when {
-                catalog == null -> item { CircularProgressIndicator() }
-                lines.isEmpty() -> item {
-                    Text(
-                        stringResource(R.string.cashier_cart_empty),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                item {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(R.string.cashier_cart),
+                            Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        Text(
+                            stringResource(R.string.cashier_count, lines.size, unitCount),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
                 }
-                else -> items(lines, key = { it.product.id }) { line ->
-                    CartLineCard(
-                        line = line,
-                        rupiah = rupiah,
-                        onDecrease = { decrement(line.product.id) },
-                        onIncrease = { increment(line.product.id) },
-                        onRemove = { quantities.remove(line.product.id) },
-                    )
+                when {
+                    catalog == null -> item { CircularProgressIndicator() }
+                    lines.isEmpty() -> item {
+                        Text(
+                            stringResource(if (scannerOpen) R.string.cashier_scan_empty else R.string.cashier_cart_empty),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    else -> items(lines, key = { it.product.id }) { line ->
+                        CartLineCard(
+                            line = line,
+                            rupiah = rupiah,
+                            onDecrease = { decrement(line.product.id) },
+                            onIncrease = { increment(line.product.id) },
+                            onRemove = { quantities.remove(line.product.id) },
+                        )
+                    }
                 }
             }
         }
@@ -349,7 +407,6 @@ private fun CartLineCard(
             ) {
                 OutlinedIconButton(
                     onClick = onDecrease,
-                    enabled = line.quantity > 1,
                     modifier = Modifier.semantics { contentDescription = decrease },
                 ) { Text("−") }
                 Text(line.quantity.toString())
