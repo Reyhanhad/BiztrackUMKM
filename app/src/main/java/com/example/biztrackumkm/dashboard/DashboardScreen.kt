@@ -26,6 +26,8 @@ internal fun DashboardScreen(
     restock: RestockViewModel,
     onCashier: () -> Unit,
     onInventory: () -> Unit,
+    onScanProduct: () -> Unit,
+    onAddProduct: () -> Unit,
     onRestock: () -> Unit,
     onLogout: () -> Unit,
     onReport: () -> Unit,
@@ -74,6 +76,15 @@ internal fun DashboardScreen(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = onCashier, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.dashboard_cashier)) }
                 OutlinedButton(onClick = onInventory, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.dashboard_inventory)) }
+            }
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = onScanProduct, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.barcode_scan_open))
+                }
+                OutlinedButton(onClick = onAddProduct, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.inventory_add))
+                }
             }
 
             if (onAddCashier != null) {

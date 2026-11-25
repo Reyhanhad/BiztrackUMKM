@@ -24,6 +24,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.biztrackumkm.cashier.CartLine
 import com.example.biztrackumkm.cashier.SaleRejected
 import com.example.biztrackumkm.cashier.SaleRejection
+import com.example.biztrackumkm.inventory.BarcodeLookupResult
 import com.example.biztrackumkm.inventory.InventoryScreen
 import com.example.biztrackumkm.inventory.InventoryViewModel
 import com.example.biztrackumkm.inventory.Product
@@ -35,6 +36,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Rule
@@ -232,6 +234,40 @@ class InventoryCheckpointTest {
         awaitText("Ubah barang")
         field("Nama produk").assert(hasText("Oatmeal"))
         compose.onNodeWithText("Rp23.000").assertIsDisplayed()
+    }
+
+    @Test fun scannerSearchAndFormCaptureKeepTheirDistinctBehavior() = runBlocking {
+        val products = database.products()
+        val product = Product("Beras", 10_000, 8, 2, "001234")
+        val id = products.insert(product)
+        products.insert(Product("Barang arsip", 10_000, 8, 2, "000999", archived = true))
+        val inventory = InventoryViewModel(products)
+
+        inventory.openSearchScanner()
+        assertEquals(BarcodeLookupResult.NotFound, inventory.applyScannedBarcode("000456"))
+        assertNull(inventory.form.value)
+        assertEquals(BarcodeLookupResult.Handled, inventory.applyScannedBarcode("001234"))
+        assertEquals(id, inventory.form.value?.productId)
+        inventory.closeScanner()
+        inventory.closeForm()
+
+        inventory.openForm()
+        inventory.changeForm { copy(name = "Barang baru", price = "15000", stock = "4", minimumStock = "1") }
+        val draft = checkNotNull(inventory.form.value)
+        inventory.openFormScanner()
+        assertEquals(BarcodeLookupResult.Handled, inventory.applyScannedBarcode("000456"))
+        inventory.closeScanner()
+        assertEquals(draft.copy(barcode = "000456"), inventory.form.value)
+
+        inventory.openFormScanner()
+        assertEquals(BarcodeLookupResult.Archived, inventory.applyScannedBarcode("000999"))
+        assertEquals(draft.copy(barcode = "000456"), inventory.form.value)
+        assertEquals(BarcodeLookupResult.Handled, inventory.applyScannedBarcode("001234"))
+        val edit = checkNotNull(inventory.form.value)
+        assertEquals(id, edit.productId)
+        assertEquals(product.name, edit.name)
+        assertEquals("001234", edit.barcode)
+        assertEquals(listOf(product.copy(id = id)), products.observeProducts().first())
     }
 
     @Test fun archivedProductCanBeRestoredWithoutLosingProductOrReceipt() {

@@ -22,7 +22,9 @@ internal data class ProductForm(
 
 internal enum class ProductProblem { Name, Price, Stock, MinimumStock, DuplicateBarcode, NotFound, Storage }
 
-internal enum class BarcodeLookupResult { Opened, Archived, Ignored }
+internal enum class BarcodeLookupResult { Handled, Archived, NotFound, Ignored }
+
+internal enum class InventoryScanMode { Search, FillNewProduct }
 
 internal class InventoryViewModel(private val dao: ProductDao) : ViewModel() {
     val products = dao.observeProducts()
@@ -33,30 +35,67 @@ internal class InventoryViewModel(private val dao: ProductDao) : ViewModel() {
     private val _form = MutableStateFlow<ProductForm?>(null)
     val form = _form.asStateFlow()
 
+    private val _scanMode = MutableStateFlow<InventoryScanMode?>(null)
+    val scanMode = _scanMode.asStateFlow()
+
+    fun openSearchScanner() {
+        if (_form.value == null) _scanMode.value = InventoryScanMode.Search
+    }
+
+    fun openFormScanner() {
+        val form = _form.value ?: return
+        if (form.productId == null && !form.saving) _scanMode.value = InventoryScanMode.FillNewProduct
+    }
+
+    fun closeScanner() {
+        _scanMode.value = null
+    }
+
     fun openForm() {
         if (_form.value == null) _form.value = ProductForm()
     }
 
     fun openEditForm(product: Product) {
         if (_form.value != null || product.archived) return
-        _form.value = ProductForm(
-            name = product.name,
-            price = product.priceRupiah.toString(),
-            stock = product.stock.toString(),
-            minimumStock = product.minimumStock.toString(),
-            barcode = product.barcode.orEmpty(),
-            productId = product.id,
-        )
+        _form.value = product.toEditForm()
     }
 
-    suspend fun openBarcode(barcode: String): BarcodeLookupResult {
+    private fun Product.toEditForm() = ProductForm(
+        name = name,
+        price = priceRupiah.toString(),
+        stock = stock.toString(),
+        minimumStock = minimumStock.toString(),
+        barcode = barcode.orEmpty(),
+        productId = id,
+    )
+
+    suspend fun applyScannedBarcode(barcode: String): BarcodeLookupResult {
+        val mode = _scanMode.value ?: return BarcodeLookupResult.Ignored
+        return lookupBarcode(barcode, mode)
+    }
+
+    suspend fun openBarcode(barcode: String): BarcodeLookupResult = lookupBarcode(barcode, mode = null)
+
+    private suspend fun lookupBarcode(barcode: String, mode: InventoryScanMode?): BarcodeLookupResult {
         val code = barcode.trim()
-        if (code.isEmpty() || _form.value != null) return BarcodeLookupResult.Ignored
+        if (code.isEmpty()) return BarcodeLookupResult.Ignored
+        val draft = _form.value
+        if (mode == InventoryScanMode.FillNewProduct) {
+            if (draft == null || draft.productId != null || draft.saving) return BarcodeLookupResult.Ignored
+        } else if (draft != null) {
+            return BarcodeLookupResult.Ignored
+        }
+
         val product = dao.findByBarcode(code)
-        if (_form.value != null) return BarcodeLookupResult.Ignored
+        if (_form.value !== draft || (mode != null && _scanMode.value != mode)) return BarcodeLookupResult.Ignored
         if (product?.archived == true) return BarcodeLookupResult.Archived
-        if (product != null) openEditForm(product) else _form.value = ProductForm(barcode = code)
-        return BarcodeLookupResult.Opened
+        _form.value = when {
+            product != null -> product.toEditForm()
+            mode == InventoryScanMode.Search -> return BarcodeLookupResult.NotFound
+            draft != null -> draft.copy(barcode = code, problem = null)
+            else -> ProductForm(barcode = code)
+        }
+        return BarcodeLookupResult.Handled
     }
 
     fun closeForm() {

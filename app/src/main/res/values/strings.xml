@@ -7,6 +7,9 @@
     <string name="inventory_search_error">Barcode belum bisa dicari. Coba lagi.</string>
     <string name="barcode_scan_open">Pindai</string>
     <string name="barcode_scan_title">Pindai barcode</string>
+    <string name="barcode_scan_fill_product">Pindai barcode barang baru</string>
+    <string name="barcode_scan_not_found">Produk tidak ditemukan</string>
+    <string name="barcode_scan_not_found_hint">Barcode belum terdaftar. Gunakan Tambah barang untuk mendaftarkan produk baru.</string>
     <string name="barcode_scan_manual">Masukkan kode manual</string>
     <string name="barcode_scan_hint">Arahkan kamera ke satu barcode kemasan dalam bingkai.</string>
     <string name="barcode_scan_wait_permission">Menunggu izin kamera…</string>

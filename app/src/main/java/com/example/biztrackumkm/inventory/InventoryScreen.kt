@@ -24,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -45,20 +46,20 @@ internal fun InventoryScreen(
 ) {
     val form by viewModel.form.collectAsStateWithLifecycle()
     val current = form
-    var scannerOpen by rememberSaveable { mutableStateOf(false) }
+    val scanMode by viewModel.scanMode.collectAsStateWithLifecycle()
     var archiveOpen by rememberSaveable { mutableStateOf(false) }
-    var archivedBarcodeNotice by rememberSaveable { mutableStateOf(false) }
+    var barcodeNotice by rememberSaveable { mutableStateOf<BarcodeLookupResult?>(null) }
 
-    suspend fun lookupBarcode(barcode: String) {
-        if (viewModel.openBarcode(barcode) == BarcodeLookupResult.Archived) {
-            archivedBarcodeNotice = true
+    fun showBarcodeNotice(result: BarcodeLookupResult) {
+        if (result == BarcodeLookupResult.Archived || result == BarcodeLookupResult.NotFound) {
+            barcodeNotice = result
         }
     }
 
-    if (scannerOpen && current == null) {
+    if (scanMode != null) {
         BarcodeScannerScreen(
-            onLookup = ::lookupBarcode,
-            onClose = { scannerOpen = false },
+            onLookup = { showBarcodeNotice(viewModel.applyScannedBarcode(it)) },
+            onClose = viewModel::closeScanner,
         )
         return
     }
@@ -76,13 +77,18 @@ internal fun InventoryScreen(
         onBack = viewModel::closeForm
     )
 
-    if (archivedBarcodeNotice) {
+    if (barcodeNotice != null) {
+        val archived = barcodeNotice == BarcodeLookupResult.Archived
         AlertDialog(
-            onDismissRequest = { archivedBarcodeNotice = false },
-            title = { Text(stringResource(R.string.inventory_archived_barcode_title)) },
-            text = { Text(stringResource(R.string.inventory_archived_barcode_hint)) },
+            onDismissRequest = { barcodeNotice = null },
+            title = {
+                Text(stringResource(if (archived) R.string.inventory_archived_barcode_title else R.string.barcode_scan_not_found))
+            },
+            text = {
+                Text(stringResource(if (archived) R.string.inventory_archived_barcode_hint else R.string.barcode_scan_not_found_hint))
+            },
             confirmButton = {
-                TextButton(onClick = { archivedBarcodeNotice = false }) {
+                TextButton(onClick = { barcodeNotice = null }) {
                     Text(stringResource(R.string.inventory_archive_ok))
                 }
             },
@@ -128,8 +134,8 @@ internal fun InventoryScreen(
                 products = products,
                 onAdd = viewModel::openForm,
                 onEdit = viewModel::openEditForm,
-                onBarcodeLookup = ::lookupBarcode,
-                onScanBarcode = { scannerOpen = true },
+                onBarcodeLookup = { showBarcodeNotice(viewModel.openBarcode(it)) },
+                onScanBarcode = viewModel::openSearchScanner,
                 onOpenRestock = onOpenRestock,
                 onOpenArchive = { archiveOpen = true },
                 modifier = Modifier.padding(insets)
@@ -140,6 +146,7 @@ internal fun InventoryScreen(
                 viewModel::changeForm,
                 viewModel::saveProduct,
                 viewModel::archiveProduct,
+                viewModel::openFormScanner,
                 Modifier.padding(insets)
                     .consumeWindowInsets(insets)
                     .imePadding()
@@ -482,6 +489,7 @@ private fun ProductEditor(
     onChange: (ProductForm.() -> ProductForm) -> Unit,
     onSave: () -> Unit,
     onArchive: () -> Unit,
+    onScanBarcode: () -> Unit,
     modifier: Modifier
 ) {
     val editing = form.productId != null
@@ -571,7 +579,17 @@ private fun ProductEditor(
             R.string.inventory_barcode,
             ProductProblem.DuplicateBarcode,
             form,
-            KeyboardType.Text
+            KeyboardType.Text,
+            trailingIcon = if (!editing) {
+                {
+                    IconButton(onClick = onScanBarcode, enabled = !form.saving) {
+                        Icon(
+                            painterResource(R.drawable.ic_barcode_camera),
+                            contentDescription = stringResource(R.string.barcode_scan_fill_product),
+                        )
+                    }
+                }
+            } else null,
         ) { value ->
             onChange { copy(barcode = value) }
         }
@@ -617,6 +635,7 @@ private fun ProductField(
     problem: ProductProblem,
     form: ProductForm,
     keyboardType: KeyboardType,
+    trailingIcon: (@Composable () -> Unit)? = null,
     onChange: (String) -> Unit
 ) {
     val invalid = form.problem == problem
@@ -630,6 +649,7 @@ private fun ProductField(
         value = value,
         onValueChange = onChange,
         label = { Text(stringResource(label)) },
+        trailingIcon = trailingIcon,
         shape = CardDefaults.outlinedShape,
         modifier = Modifier.fillMaxWidth()
             .bringIntoViewRequester(focusError),
