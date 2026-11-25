@@ -14,4 +14,22 @@ internal class RestockViewModel(
                 product.stock <= product.minimumStock
             }
         }
+
+    fun calculateRecommendation(
+        product: Product,
+        totalUnitsSold: Int,
+        periodDays: Int,
+        leadTimeDays: Int,
+        safetyStock: Int,
+        hasEnoughHistory: Boolean = true
+    ): RestockRecommendationResult {
+        return RestockCalculator.calculate(
+            currentStock = product.stock,
+            totalUnitsSold = totalUnitsSold,
+            periodDays = periodDays,
+            leadTimeDays = leadTimeDays,
+            safetyStock = safetyStock,
+            hasEnoughHistory = hasEnoughHistory
+        )
+    }
 }

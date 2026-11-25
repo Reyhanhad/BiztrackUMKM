@@ -80,6 +80,11 @@
     <string name="restock_action_hint">Segera lakukan pengisian stok.</string>
     <string name="restock_empty_title">Tidak ada produk dengan stok rendah</string>
     <string name="restock_empty_hint">Seluruh produk memiliki stok yang aman.</string>
+    <string name="restock_recommendation_title">Rekomendasi Restock</string>
+    <string name="restock_lead_time_label">Waktu pengadaan (hari)</string>
+    <string name="restock_safety_stock_label">Stok pengaman</string>
+    <string name="restock_recommendation_result">Saran restock: %1$d unit (Kebutuhan: %2$d unit)</string>
+    <string name="restock_insufficient_history">Riwayat transaksi belum mencukupi untuk rekomendasi.</string>
     <string name="checkout_open">Simpan penjualan</string>
     <string name="checkout_confirm_title">Konfirmasi penjualan</string>
     <string name="checkout_confirm_body">Simpan penjualan senilai %1$s? Stok produk akan berkurang setelah penjualan tersimpan.</string>
