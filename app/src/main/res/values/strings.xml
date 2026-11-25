@@ -56,6 +56,8 @@
     <string name="owner_logout">Logout</string>
     <string name="cashier_open">Kasir</string>
     <string name="cashier_title">Transaksi kasir</string>
+    <string name="cashier_scan_title">Pindai di kasir</string>
+    <string name="cashier_scan_empty">Pindai barcode produk terdaftar atau pilih barang lewat Cari produk.</string>
     <string name="cashier_back">Kembali</string>
     <string name="cashier_search">Cari produk</string>
     <string name="cashier_search_name">Nama produk</string>

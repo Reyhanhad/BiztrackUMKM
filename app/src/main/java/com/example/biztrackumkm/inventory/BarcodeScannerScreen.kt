@@ -62,32 +62,9 @@ import com.google.mlkit.vision.barcode.common.Barcode
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun BarcodeScannerScreen(onLookup: suspend (String) -> Unit, onClose: () -> Unit) {
-    val context = LocalContext.current
-    val hasRearCamera = remember(context) {
-        context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA)
-    }
-    fun cameraGranted() = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-        PackageManager.PERMISSION_GRANTED
-
-    var hasPermission by remember { mutableStateOf(cameraGranted()) }
-    var permissionRequested by rememberSaveable { mutableStateOf(false) }
-    var requesting by rememberSaveable { mutableStateOf(false) }
-    var cameraFailed by remember { mutableStateOf(false) }
     var captured by rememberSaveable { mutableStateOf<String?>(null) }
     var lookupFailed by remember { mutableStateOf(false) }
 
-    val requestPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        hasPermission = granted
-        requesting = false
-    }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { hasPermission = cameraGranted() }
-    LaunchedEffect(hasRearCamera, hasPermission) {
-        if (hasRearCamera && !hasPermission && !permissionRequested && captured == null) {
-            permissionRequested = true
-            requesting = true
-            requestPermission.launch(Manifest.permission.CAMERA)
-        }
-    }
     LaunchedEffect(captured) {
         val code = captured ?: return@LaunchedEffect
         try {
@@ -117,23 +94,10 @@ internal fun BarcodeScannerScreen(onLookup: suspend (String) -> Unit, onClose: (
                 when {
                     lookupFailed -> ScannerStatus(R.string.inventory_search_error)
                     captured != null -> ScannerStatus(R.string.barcode_scan_lookup, loading = true)
-                    !hasRearCamera || cameraFailed -> ScannerStatus(R.string.barcode_scan_unavailable)
-                    !hasPermission && (requesting || !permissionRequested) ->
-                        ScannerStatus(R.string.barcode_scan_wait_permission, loading = true)
-                    !hasPermission -> ScannerStatus(R.string.barcode_scan_permission_denied)
-                    else -> {
-                        BarcodeCameraPreview(
-                            onScan = { code -> captured = code },
-                            onError = { cameraFailed = true },
-                        )
-                        ScanGuide(Modifier.fillMaxSize())
-                        Text(
-                            text = stringResource(R.string.barcode_scan_hint),
-                            modifier = Modifier.align(Alignment.BottomCenter)
-                                .background(Color.Black.copy(alpha = 0.72f)).padding(12.dp),
-                            color = Color.White,
-                        )
-                    }
+                    else -> BarcodePreview(
+                        modifier = Modifier.fillMaxSize(),
+                        onFrame = { code -> if (captured == null && code != null) captured = code },
+                    )
                 }
             }
             if (lookupFailed) {
@@ -149,6 +113,53 @@ internal fun BarcodeScannerScreen(onLookup: suspend (String) -> Unit, onClose: (
             }
             OutlinedButton(onClick = onClose, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.barcode_scan_manual))
+            }
+        }
+    }
+}
+
+/** Shared live preview. Null is a frame without a decoded barcode; ambiguous frames are ignored. */
+@Composable
+internal fun BarcodePreview(modifier: Modifier, onFrame: (String?) -> Unit) {
+    val context = LocalContext.current
+    val hasRearCamera = remember(context) {
+        context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA)
+    }
+    fun cameraGranted() = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+        PackageManager.PERMISSION_GRANTED
+
+    var hasPermission by remember { mutableStateOf(cameraGranted()) }
+    var permissionRequested by rememberSaveable { mutableStateOf(false) }
+    var requesting by rememberSaveable { mutableStateOf(false) }
+    var cameraFailed by remember { mutableStateOf(false) }
+    val requestPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        hasPermission = granted
+        requesting = false
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { hasPermission = cameraGranted() }
+    LaunchedEffect(hasRearCamera, hasPermission) {
+        if (hasRearCamera && !hasPermission && !permissionRequested) {
+            permissionRequested = true
+            requesting = true
+            requestPermission.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    Box(modifier, contentAlignment = Alignment.Center) {
+        when {
+            !hasRearCamera || cameraFailed -> ScannerStatus(R.string.barcode_scan_unavailable)
+            !hasPermission && (requesting || !permissionRequested) ->
+                ScannerStatus(R.string.barcode_scan_wait_permission, loading = true)
+            !hasPermission -> ScannerStatus(R.string.barcode_scan_permission_denied)
+            else -> {
+                BarcodeCameraPreview(onFrame, onError = { cameraFailed = true })
+                ScanGuide(Modifier.fillMaxSize())
+                Text(
+                    text = stringResource(R.string.barcode_scan_hint),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                        .background(Color.Black.copy(alpha = 0.72f)).padding(12.dp),
+                    color = Color.White,
+                )
             }
         }
     }
@@ -188,10 +199,10 @@ private fun ScanGuide(modifier: Modifier) {
 }
 
 @Composable
-private fun BarcodeCameraPreview(onScan: (String) -> Unit, onError: () -> Unit) {
+private fun BarcodeCameraPreview(onFrame: (String?) -> Unit, onError: () -> Unit) {
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
-    val emitBarcode by rememberUpdatedState(onScan)
+    val emitFrame by rememberUpdatedState(onFrame)
     val reportError by rememberUpdatedState(onError)
     val previewView = remember(context) {
         PreviewView(context).apply { implementationMode = PreviewView.ImplementationMode.COMPATIBLE }
@@ -229,10 +240,9 @@ private fun BarcodeCameraPreview(onScan: (String) -> Unit, onError: () -> Unit) 
                 fail()
                 return@MlKitAnalyzer
             }
-            val code = result.getValue(scanner)?.singleOrNull()?.rawValue
-            if (!code.isNullOrBlank()) {
-                accepting = false
-                emitBarcode(code)
+            val barcodes = result.getValue(scanner) ?: return@MlKitAnalyzer
+            if (barcodes.size <= 1) {
+                emitFrame(barcodes.singleOrNull()?.rawValue?.takeUnless(String::isBlank))
             }
         })
         provider.addListener({
