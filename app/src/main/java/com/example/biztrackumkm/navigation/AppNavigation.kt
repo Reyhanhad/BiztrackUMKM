@@ -23,7 +23,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.biztrackumkm.auth.AuthScreenState
 import com.example.biztrackumkm.auth.AuthViewModel
 import com.example.biztrackumkm.auth.LoginScreen
+import com.example.biztrackumkm.auth.RegisterCashierDialog
 import com.example.biztrackumkm.auth.RegisterScreen
+import com.example.biztrackumkm.auth.UserRole
 import com.example.biztrackumkm.cashier.CashierScreen
 import com.example.biztrackumkm.cashier.CheckoutViewModel
 import com.example.biztrackumkm.cashier.SaleDao
@@ -44,7 +46,7 @@ internal fun AppNavigation(
 ) {
     val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
 
-    when (uiState.screen) {
+    when (val screen = uiState.screen) {
 
         AuthScreenState.Loading -> {
             LoadingScreen(
@@ -69,13 +71,37 @@ internal fun AppNavigation(
             )
         }
 
-        AuthScreenState.Authenticated -> OwnerNavigation(
-            inventory = inventoryViewModel,
-            checkout = checkoutViewModel,
-            sales = sales,
-            onLogout = authViewModel::logout,
-        )
+        is AuthScreenState.Authenticated -> {
+            if (screen.role == UserRole.CASHIER) {
+                CashierOnlyNavigation(
+                    inventory = inventoryViewModel,
+                    checkout = checkoutViewModel,
+                    onLogout = authViewModel::logout,
+                )
+            } else {
+                OwnerNavigation(
+                    inventory = inventoryViewModel,
+                    checkout = checkoutViewModel,
+                    sales = sales,
+                    authViewModel = authViewModel,
+                    onLogout = authViewModel::logout,
+                )
+            }
+        }
     }
+}
+
+@Composable
+internal fun CashierOnlyNavigation(
+    inventory: InventoryViewModel,
+    checkout: CheckoutViewModel,
+    onLogout: () -> Unit,
+) {
+    CashierScreen(
+        products = inventory.products,
+        checkout = checkout,
+        onBack = onLogout
+    )
 }
 
 @Composable
@@ -83,11 +109,27 @@ internal fun OwnerNavigation(
     inventory: InventoryViewModel,
     checkout: CheckoutViewModel,
     sales: SaleDao,
+    authViewModel: AuthViewModel,
     onLogout: () -> Unit,
 ) {
     val restock = remember(inventory) { RestockViewModel(inventory.products) }
     var screen by rememberSaveable { mutableStateOf("dashboard") }
     var returnScreen by rememberSaveable { mutableStateOf("dashboard") }
+    var showRegisterCashier by rememberSaveable { mutableStateOf(false) }
+
+    val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
+
+    if (showRegisterCashier) {
+        RegisterCashierDialog(
+            uiState = uiState,
+            onRegisterCashier = authViewModel::registerCashier,
+            onDismiss = {
+                showRegisterCashier = false
+                authViewModel.clearCashierMessage()
+            },
+            onClearMessage = authViewModel::clearCashierMessage
+        )
+    }
 
     fun openFromHere(destination: String) {
         returnScreen = screen
@@ -104,6 +146,7 @@ internal fun OwnerNavigation(
             onInventory = { screen = "inventory" },
             onRestock = { openFromHere("restock") },
             onLogout = onLogout,
+            onAddCashier = { showRegisterCashier = true },
         )
         "report" -> SalesReportScreen(sales, onBack = { screen = "dashboard" })
         "cashier" -> CashierScreen(inventory.products, checkout, onBack = { screen = returnScreen })

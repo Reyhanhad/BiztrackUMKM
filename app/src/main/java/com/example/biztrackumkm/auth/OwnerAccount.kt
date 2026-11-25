@@ -20,5 +20,7 @@ data class OwnerAccount(
 
     val passwordSalt: String,
 
+    val role: String = "OWNER",
+
     val createdAt: Long = System.currentTimeMillis()
 )
