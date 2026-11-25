@@ -20,13 +20,15 @@ sealed interface AuthScreenState {
 
     data object Login : AuthScreenState
 
-    data object Authenticated : AuthScreenState
+    data class Authenticated(val role: UserRole = UserRole.OWNER) : AuthScreenState
 }
 
 data class AuthUiState(
     val screen: AuthScreenState = AuthScreenState.Loading,
     val isProcessing: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val cashierMessage: String? = null,
+    val isRegisteringCashier: Boolean = false
 )
 
 class AuthViewModel(
@@ -52,7 +54,6 @@ class AuthViewModel(
         checkSession()
     }
 
-    // PERIKSA AKUN DAN SESI
     private fun checkSession() {
 
         viewModelScope.launch {
@@ -67,9 +68,20 @@ class AuthViewModel(
                     false
                 )
 
+                val roleName = preferences.getString(
+                    "logged_in_role",
+                    UserRole.OWNER.name
+                ) ?: UserRole.OWNER.name
+
+                val role = try {
+                    UserRole.valueOf(roleName)
+                } catch (e: Exception) {
+                    UserRole.OWNER
+                }
+
                 val destination = when {
                     !hasOwner -> AuthScreenState.Register
-                    loggedIn -> AuthScreenState.Authenticated
+                    loggedIn -> AuthScreenState.Authenticated(role)
                     else -> AuthScreenState.Login
                 }
 
@@ -90,7 +102,6 @@ class AuthViewModel(
         }
     }
 
-    // REGISTRASI PEMILIK
     fun register(
         username: String,
         password: String,
@@ -130,6 +141,7 @@ class AuthViewModel(
                     onSuccess = {
                         preferences.edit()
                             .putBoolean("is_logged_in", false)
+                            .remove("logged_in_role")
                             .apply()
 
                         _uiState.value = AuthUiState(
@@ -158,7 +170,62 @@ class AuthViewModel(
         }
     }
 
-    // LOGIN PEMILIK
+    fun registerCashier(
+        username: String,
+        password: String,
+        confirmPassword: String
+    ) {
+        if (_uiState.value.isProcessing || _uiState.value.isRegisteringCashier) return
+
+        if (password != confirmPassword) {
+            _uiState.value = _uiState.value.copy(
+                cashierMessage = "Konfirmasi password tidak sama."
+            )
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(
+            isRegisteringCashier = true,
+            cashierMessage = null
+        )
+
+        viewModelScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    repository.registerCashier(
+                        username = username,
+                        password = password
+                    )
+                }
+
+                result.fold(
+                    onSuccess = {
+                        _uiState.value = _uiState.value.copy(
+                            isRegisteringCashier = false,
+                            cashierMessage = "Akun kasir '$username' berhasil dibuat."
+                        )
+                    },
+                    onFailure = { error ->
+                        _uiState.value = _uiState.value.copy(
+                            isRegisteringCashier = false,
+                            cashierMessage = error.message
+                                ?: "Gagal membuat akun kasir."
+                        )
+                    }
+                )
+
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isRegisteringCashier = false,
+                    cashierMessage = e.message
+                        ?: "Terjadi kesalahan saat membuat akun kasir."
+                )
+            }
+        }
+    }
+
     fun login(
         username: String,
         password: String
@@ -187,15 +254,16 @@ class AuthViewModel(
                 }
 
                 result.fold(
-                    onSuccess = {
+                    onSuccess = { role ->
 
                         val saved = preferences.edit()
                             .putBoolean("is_logged_in", true)
+                            .putString("logged_in_role", role.name)
                             .commit()
 
                         if (saved) {
                             _uiState.value = AuthUiState(
-                                screen = AuthScreenState.Authenticated
+                                screen = AuthScreenState.Authenticated(role)
                             )
                         } else {
                             _uiState.value = AuthUiState(
@@ -227,15 +295,16 @@ class AuthViewModel(
         }
     }
 
-    // LOGOUT PEMILIK
     fun logout() {
 
-        if (_uiState.value.screen != AuthScreenState.Authenticated) {
+        val currentScreen = _uiState.value.screen
+        if (currentScreen !is AuthScreenState.Authenticated) {
             return
         }
 
         val saved = preferences.edit()
             .putBoolean("is_logged_in", false)
+            .remove("logged_in_role")
             .commit()
 
         if (saved) {
@@ -249,14 +318,18 @@ class AuthViewModel(
         }
     }
 
-    // HAPUS PESAN ERROR
     fun clearError() {
         _uiState.value = _uiState.value.copy(
             errorMessage = null
         )
     }
 
-    // COBA ULANG PEMERIKSAAN SESI
+    fun clearCashierMessage() {
+        _uiState.value = _uiState.value.copy(
+            cashierMessage = null
+        )
+    }
+
     fun retry() {
         if (!_uiState.value.isProcessing) {
             _uiState.value = AuthUiState(

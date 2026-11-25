@@ -1,4 +1,3 @@
-
 package com.example.biztrackumkm.auth
 
 import java.security.MessageDigest
@@ -77,7 +76,8 @@ class AuthRepository(
                         val owner = OwnerAccount(
                             username = cleanUsername,
                             passwordHash = hashEncoded,
-                            passwordSalt = saltEncoded
+                            passwordSalt = saltEncoded,
+                            role = "OWNER"
                         )
 
                         ownerDao.insertOwner(owner)
@@ -91,12 +91,83 @@ class AuthRepository(
         }
     }
 
-    suspend fun login(
+    suspend fun registerCashier(
         username: String,
         password: String
     ): Result<Unit> {
+        return registrationMutex.withLock {
+            try {
+                val cleanUsername = username.trim()
+
+                when {
+                    cleanUsername.length < 3 -> {
+                        Result.failure(
+                            IllegalArgumentException(
+                                "Username minimal 3 karakter."
+                            )
+                        )
+                    }
+
+                    cleanUsername.length > 30 -> {
+                        Result.failure(
+                            IllegalArgumentException(
+                                "Username maksimal 30 karakter."
+                            )
+                        )
+                    }
+
+                    password.length < 8 -> {
+                        Result.failure(
+                            IllegalArgumentException(
+                                "Password minimal 8 karakter."
+                            )
+                        )
+                    }
+
+                    ownerDao.countByUsername(cleanUsername) > 0 -> {
+                        Result.failure(
+                            IllegalArgumentException(
+                                "Username sudah digunakan."
+                            )
+                        )
+                    }
+
+                    else -> {
+                        val salt = ByteArray(16)
+                        secureRandom.nextBytes(salt)
+
+                        val saltEncoded = Base64.getEncoder()
+                            .encodeToString(salt)
+
+                        val hashEncoded = hashPassword(
+                            password = password,
+                            salt = salt
+                        )
+
+                        val cashier = OwnerAccount(
+                            username = cleanUsername,
+                            passwordHash = hashEncoded,
+                            passwordSalt = saltEncoded,
+                            role = "CASHIER"
+                        )
+
+                        ownerDao.insertOwner(cashier)
+
+                        Result.success(Unit)
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun login(
+        username: String,
+        password: String
+    ): Result<UserRole> {
         return try {
-            val owner = ownerDao.getOwnerByUsername(
+            val account = ownerDao.getOwnerByUsername(
                 username.trim()
             ) ?: return Result.failure(
                 IllegalArgumentException(
@@ -105,7 +176,7 @@ class AuthRepository(
             )
 
             val salt = Base64.getDecoder().decode(
-                owner.passwordSalt
+                account.passwordSalt
             )
 
             val enteredHash = hashPassword(
@@ -114,7 +185,7 @@ class AuthRepository(
             )
 
             val savedHash = Base64.getDecoder().decode(
-                owner.passwordHash
+                account.passwordHash
             )
 
             val enteredHashBytes = Base64.getDecoder().decode(
@@ -127,7 +198,12 @@ class AuthRepository(
                     enteredHashBytes
                 )
             ) {
-                Result.success(Unit)
+                val role = if (account.role == "CASHIER") {
+                    UserRole.CASHIER
+                } else {
+                    UserRole.OWNER
+                }
+                Result.success(role)
             } else {
                 Result.failure(
                     IllegalArgumentException(
@@ -138,6 +214,10 @@ class AuthRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun getCashierAccounts(): List<OwnerAccount> {
+        return ownerDao.getCashierAccounts()
     }
 
     private fun hashPassword(

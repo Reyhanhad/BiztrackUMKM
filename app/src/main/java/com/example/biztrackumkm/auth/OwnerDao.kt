@@ -22,10 +22,17 @@ interface OwnerDao {
 
     @Query("""
         SELECT * FROM owner_accounts
+        WHERE role = 'OWNER'
         LIMIT 1
     """)
     suspend fun getFirstOwner(): OwnerAccount?
 
-    @Query("SELECT COUNT(*) FROM owner_accounts")
+    @Query("SELECT COUNT(*) FROM owner_accounts WHERE role = 'OWNER'")
     suspend fun getOwnerCount(): Int
+
+    @Query("SELECT COUNT(*) FROM owner_accounts WHERE username = :username")
+    suspend fun countByUsername(username: String): Int
+
+    @Query("SELECT * FROM owner_accounts WHERE role = 'CASHIER' ORDER BY id DESC")
+    suspend fun getCashierAccounts(): List<OwnerAccount>
 }

@@ -7,8 +7,8 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [OwnerAccount::class],
-    version = 1,
-    exportSchema = true
+    version = 2,
+    exportSchema = false
 )
 abstract class AuthDatabase : RoomDatabase() {
 
@@ -25,7 +25,9 @@ abstract class AuthDatabase : RoomDatabase() {
                     context.applicationContext,
                     AuthDatabase::class.java,
                     "biztrack_auth_database"
-                ).build().also {
+                )
+                .fallbackToDestructiveMigration(dropAllTables = true)
+                .build().also {
                     INSTANCE = it
                 }
             }

@@ -29,6 +29,7 @@ internal fun DashboardScreen(
     onRestock: () -> Unit,
     onLogout: () -> Unit,
     onReport: () -> Unit,
+    onAddCashier: (() -> Unit)? = null,
 ) {
     val sales by dailySales.collectAsStateWithLifecycle(initialValue = null)
     val lowStock by restock.lowStockProducts.collectAsStateWithLifecycle(initialValue = null)
@@ -73,6 +74,12 @@ internal fun DashboardScreen(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = onCashier, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.dashboard_cashier)) }
                 OutlinedButton(onClick = onInventory, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.dashboard_inventory)) }
+            }
+
+            if (onAddCashier != null) {
+                OutlinedButton(onClick = onAddCashier, modifier = Modifier.fillMaxWidth()) {
+                    Text("Tambah Akun Kasir")
+                }
             }
 
             OutlinedCard(onClick = onRestock, modifier = Modifier.fillMaxWidth()) {
