@@ -1,9 +1,15 @@
 package com.example.biztrackumkm
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.room.Room
@@ -14,6 +20,7 @@ import com.example.biztrackumkm.dashboard.salesForDay
 import com.example.biztrackumkm.inventory.InventoryViewModel
 import com.example.biztrackumkm.inventory.Product
 import com.example.biztrackumkm.inventory.ProductDatabase
+import com.example.biztrackumkm.navigation.CashierOnlyNavigation
 import com.example.biztrackumkm.navigation.OwnerNavigation
 import com.example.biztrackumkm.ui.theme.BiztrackUMKMTheme
 import java.time.LocalDate
@@ -49,6 +56,8 @@ class DashboardCheckpointTest {
         compose.onNodeWithText(text).assertIsDisplayed()
     }
 
+    private fun tab(label: String) = compose.onNode(hasText(label) and isSelectable())
+
     @Test fun dashboardMatchesLocalDayAndRespondsToSalesAndStockChanges() {
         val zone = ZoneId.systemDefault()
         val date = LocalDate.now(zone)
@@ -68,10 +77,13 @@ class DashboardCheckpointTest {
         shown("Rp 0")
         shown("0")
         shown("0 produk")
-        compose.onNodeWithText("Buka kasir").performClick()
+        compose.onNodeWithText("Buka kasir").assertDoesNotExist()
+        compose.onAllNodes(hasText("Inventaris") and !isSelectable()).assertCountEquals(0)
+        compose.onNodeWithText("Laporan penjualan").assertDoesNotExist()
+        tab("Kasir").performClick()
         shown("Transaksi kasir")
         compose.onNodeWithText("Kembali").performClick()
-        compose.onNodeWithText("Inventaris").performClick()
+        tab("Inventaris").performClick()
         shown("Katalog & stok")
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         shown("Dashboard harian")
@@ -85,6 +97,63 @@ class DashboardCheckpointTest {
         runBlocking { db.products().update(stored.copy(priceRupiah = 18000, stock = 5)) }
         shown("0 produk")
         shown("Rp 14.000")
+    }
+
+    @Test fun ownerTabsKeepTheCartAndOpenSavedReceipts() {
+        val products = db.products()
+        val product = runBlocking {
+            val draft = Product("Gula uji navbar", 14_000, 6, 2, null)
+            draft.copy(id = products.insert(draft)).also { db.sales().saveSale(listOf(CartLine(it, 1))) }
+        }
+        val inventory = InventoryViewModel(products)
+        val checkout = CheckoutViewModel(db.sales())
+        compose.setContent {
+            BiztrackUMKMTheme {
+                OwnerNavigation(inventory, checkout, db.sales(), onAddCashier = null, onLogout = {})
+            }
+        }
+        tab("Beranda").assertIsSelected()
+        tab("Inventaris").performClick()
+        tab("Inventaris").assertIsSelected()
+        shown("Katalog & stok")
+
+        tab("Kasir").performClick()
+        compose.waitUntil(5_000) {
+            compose.onAllNodes(hasText("Cari produk") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("Cari produk").performClick()
+        compose.onNodeWithContentDescription("Tambah ${product.name} ke keranjang").performClick()
+        shown("1 produk · 1 pcs")
+
+        tab("Riwayat").performClick()
+        tab("Riwayat").assertIsSelected()
+        shown("Riwayat transaksi")
+        shown("Detail & nota digital")
+        compose.onNodeWithText("Detail & nota digital").performClick()
+        shown("Nota digital")
+        shown(product.name)
+        compose.onNodeWithText("Kembali").performClick()
+        shown("Riwayat transaksi")
+
+        tab("Laporan").performClick()
+        tab("Laporan").assertIsSelected()
+        shown("Laporan penjualan")
+        tab("Kasir").performClick()
+        tab("Kasir").assertIsSelected()
+        shown("1 produk · 1 pcs")
+        assertEquals(5, runBlocking { products.observeProducts().first().single().stock })
+    }
+
+    @Test fun cashierStillHasHistoryWithoutTheOwnerTabs() {
+        val inventory = InventoryViewModel(db.products())
+        val checkout = CheckoutViewModel(db.sales())
+        compose.setContent { BiztrackUMKMTheme { CashierOnlyNavigation(inventory, checkout, onLogout = {}) } }
+
+        shown("Transaksi kasir")
+        compose.onAllNodes(isSelectable()).assertCountEquals(0)
+        compose.onNodeWithText("Riwayat").performClick()
+        shown("Riwayat transaksi")
+        compose.onAllNodes(isSelectable()).assertCountEquals(0)
     }
 
     @Test fun midnightBoundariesAndTotalsBeyondLongAreExact() = runBlocking {

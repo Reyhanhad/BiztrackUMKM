@@ -79,10 +79,12 @@ internal fun CashierScreen(
     products: Flow<List<Product>>,
     checkout: CheckoutViewModel,
     onBack: () -> Unit,
+    showHistoryAction: Boolean = true,
 ) {
     val quantities = rememberSaveable(saver = CartQuantitiesSaver) { mutableStateMapOf<Long, Int>() }
     var pickerOpen by rememberSaveable { mutableStateOf(false) }
-    var scannerOpen by rememberSaveable { mutableStateOf(false) }
+    // Leaving the tab disposes the preview; returning keeps the cart, not the camera session.
+    var scannerOpen by remember { mutableStateOf(false) }
     var confirmOpen by rememberSaveable { mutableStateOf(false) }
     var historyOpen by rememberSaveable { mutableStateOf(false) }
     var receiptId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -133,18 +135,20 @@ internal fun CashierScreen(
                     }
                 },
                 actions = {
-                    TextButton(
-                        onClick = {
-                            if (scannerOpen) {
-                                scannerOpen = false
-                                pickerOpen = true
-                            } else {
-                                historyOpen = true
-                            }
-                        },
-                        enabled = checkoutState == CheckoutState.Idle,
-                    ) {
-                        Text(stringResource(if (scannerOpen) R.string.cashier_search else R.string.receipt_history_action))
+                    if (scannerOpen || showHistoryAction) {
+                        TextButton(
+                            onClick = {
+                                if (scannerOpen) {
+                                    scannerOpen = false
+                                    pickerOpen = true
+                                } else {
+                                    historyOpen = true
+                                }
+                            },
+                            enabled = checkoutState == CheckoutState.Idle,
+                        ) {
+                            Text(stringResource(if (scannerOpen) R.string.cashier_search else R.string.receipt_history_action))
+                        }
                     }
                 },
             )

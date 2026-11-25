@@ -24,13 +24,10 @@ import kotlinx.coroutines.flow.Flow
 internal fun DashboardScreen(
     dailySales: Flow<DailySales>,
     restock: RestockViewModel,
-    onCashier: () -> Unit,
-    onInventory: () -> Unit,
     onScanProduct: () -> Unit,
     onAddProduct: () -> Unit,
     onRestock: () -> Unit,
     onLogout: () -> Unit,
-    onReport: () -> Unit,
     onAddCashier: (() -> Unit)? = null,
 ) {
     val sales by dailySales.collectAsStateWithLifecycle(initialValue = null)
@@ -69,13 +66,7 @@ internal fun DashboardScreen(
                             Text(today.count.toString(), style = MaterialTheme.typography.titleMedium)
                         }
                     }
-                    TextButton(onClick = onReport) { Text(stringResource(R.string.report_title)) }
                 }
-            }
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = onCashier, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.dashboard_cashier)) }
-                OutlinedButton(onClick = onInventory, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.dashboard_inventory)) }
             }
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
