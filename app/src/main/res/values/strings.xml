@@ -68,6 +68,8 @@
     <string name="cashier_increase">Tambah jumlah %1$s</string>
     <string name="cashier_remove">Hapus</string>
     <string name="cashier_remove_product">Hapus %1$s dari keranjang</string>
+
+    <!-- GER-1: Peringatan stok rendah -->
     <string name="restock_title">Peringatan Stok Rendah</string>
     <string name="restock_open">Lihat Stok Rendah</string>
     <string name="restock_back">Kembali</string>
@@ -80,6 +82,17 @@
     <string name="restock_action_hint">Segera lakukan pengisian stok.</string>
     <string name="restock_empty_title">Tidak ada produk dengan stok rendah</string>
     <string name="restock_empty_hint">Seluruh produk memiliki stok yang aman.</string>
+
+    <!-- GER-2: Prioritas restock -->
+    <string name="restock_priority_title">Prioritas Restock</string>
+    <string name="restock_priority_subtitle">Produk diurutkan berdasarkan tingkat prioritas pengisian stok.</string>
+    <string name="restock_priority_high">PRIORITAS TINGGI</string>
+    <string name="restock_priority_medium">PRIORITAS SEDANG</string>
+    <string name="restock_priority_low">PRIORITAS RENDAH</string>
+    <string name="restock_priority_high_hint">Segera isi ulang stok produk ini.</string>
+    <string name="restock_priority_medium_hint">Jadwalkan pengisian stok dalam waktu dekat.</string>
+    <string name="restock_priority_low_hint">Pantau stok dan siapkan pengisian berikutnya.</string>
+
     <string name="restock_recommendation_title">Rekomendasi Restock</string>
     <string name="restock_lead_time_label">Waktu pengadaan (hari)</string>
     <string name="restock_safety_stock_label">Stok pengaman</string>
