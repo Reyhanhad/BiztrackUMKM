@@ -133,4 +133,14 @@
     <string name="report_date_hint">Masukkan tanggal dalam format HH/BB/TTTT.</string>
     <string name="report_reversed">Tanggal akhir harus sama atau sesudah tanggal awal.</string>
     <string name="report_apply">Terapkan</string>
+    <string name="receipt_history_action">Riwayat</string>
+    <string name="receipt_history_title">Riwayat transaksi</string>
+    <string name="receipt_history_empty">Belum ada transaksi tersimpan.</string>
+    <string name="receipt_history_open">Detail &amp; nota digital</string>
+    <string name="receipt_open">Lihat nota</string>
+    <string name="receipt_title">Nota digital</string>
+    <string name="receipt_number">#TRX-%1$d</string>
+    <string name="receipt_unit_price">%1$d pcs × %2$s</string>
+    <string name="receipt_total">Total transaksi</string>
+    <string name="receipt_not_found">Nota tidak ditemukan.</string>
 </resources>
