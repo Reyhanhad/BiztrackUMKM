@@ -173,7 +173,7 @@ internal fun CashierScreen(
                         if (scannerOpen) {
                             val accepted = gate.acceptFrame(code, SystemClock.elapsedRealtime())
                             val id = accepted?.let { barcodeProducts[it] }
-                            if (id != null && id !in quantities) quantities[id] = 1
+                            if (id != null) increment(id)
                         }
                     },
                 )
