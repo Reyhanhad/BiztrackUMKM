@@ -7,6 +7,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -108,7 +111,7 @@ internal fun RestockScreen(
                         items = lowStockProducts,
                         key = { it.id }
                     ) { product ->
-                        LowStockProductCard(product)
+                        LowStockProductCard(product, viewModel)
                     }
                 }
             }
@@ -117,7 +120,14 @@ internal fun RestockScreen(
 }
 
 @Composable
-private fun LowStockProductCard(product: Product) {
+private fun LowStockProductCard(
+    product: Product,
+    viewModel: RestockViewModel
+) {
+    var leadTimeText by rememberSaveable { mutableStateOf("4") }
+    var safetyStockText by rememberSaveable { mutableStateOf("2") }
+    var totalSoldText by rememberSaveable { mutableStateOf("21") }
+    var periodDaysText by rememberSaveable { mutableStateOf("7") }
 
     val priority = product.restockPriority()
     val isOutOfStock = product.stock == 0
@@ -157,6 +167,20 @@ private fun LowStockProductCard(product: Product) {
     val stockProgress = product.restockRatio()
         .coerceIn(0.0, 1.0)
         .toFloat()
+
+    val leadTime = leadTimeText.toIntOrNull() ?: 0
+    val safetyStock = safetyStockText.toIntOrNull() ?: 0
+    val totalSold = totalSoldText.toIntOrNull() ?: 0
+    val periodDays = periodDaysText.toIntOrNull() ?: 0
+
+    val recommendation = viewModel.calculateRecommendation(
+        product = product,
+        totalUnitsSold = totalSold,
+        periodDays = periodDays,
+        leadTimeDays = leadTime,
+        safetyStock = safetyStock,
+        hasEnoughHistory = periodDays > 0 && totalSold >= 0
+    )
 
     OutlinedCard(
         modifier = Modifier.fillMaxWidth()
@@ -229,6 +253,55 @@ private fun LowStockProductCard(product: Product) {
                 color = priorityColor,
                 style = MaterialTheme.typography.bodySmall
             )
+
+            HorizontalDivider()
+
+            Text(
+                text = stringResource(R.string.restock_recommendation_title),
+                style = MaterialTheme.typography.titleSmall
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = leadTimeText,
+                    onValueChange = { leadTimeText = it.filter { char -> char.isDigit() } },
+                    label = { Text(stringResource(R.string.restock_lead_time_label)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = safetyStockText,
+                    onValueChange = { safetyStockText = it.filter { char -> char.isDigit() } },
+                    label = { Text(stringResource(R.string.restock_safety_stock_label)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true
+                )
+            }
+
+            when (recommendation) {
+                is RestockRecommendationResult.Success -> {
+                    Text(
+                        text = stringResource(
+                            R.string.restock_recommendation_result,
+                            recommendation.recommendedQuantity,
+                            recommendation.requiredQuantity
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                is RestockRecommendationResult.InsufficientHistory -> {
+                    Text(
+                        text = stringResource(R.string.restock_insufficient_history),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
