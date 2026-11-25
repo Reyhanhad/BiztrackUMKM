@@ -141,6 +141,14 @@ internal fun OwnerNavigation(
             restock = restock,
             onCashier = { openFromHere("cashier") },
             onInventory = { screen = "inventory" },
+            onScanProduct = {
+                inventory.openSearchScanner()
+                screen = "inventory"
+            },
+            onAddProduct = {
+                inventory.openForm()
+                screen = "inventory"
+            },
             onRestock = { openFromHere("restock") },
             onLogout = onLogout,
             onAddCashier = onAddCashier,

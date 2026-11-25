@@ -24,6 +24,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.biztrackumkm.cashier.CartLine
 import com.example.biztrackumkm.cashier.SaleRejected
 import com.example.biztrackumkm.cashier.SaleRejection
+import com.example.biztrackumkm.inventory.BarcodeLookupResult
 import com.example.biztrackumkm.inventory.InventoryScreen
 import com.example.biztrackumkm.inventory.InventoryViewModel
 import com.example.biztrackumkm.inventory.Product
@@ -35,6 +36,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Rule
@@ -234,7 +236,41 @@ class InventoryCheckpointTest {
         compose.onNodeWithText("Rp23.000").assertIsDisplayed()
     }
 
-    @Test fun archivedProductStaysOutOfActiveListsAndCheckoutButKeepsItsReceipt() {
+    @Test fun scannerSearchAndFormCaptureKeepTheirDistinctBehavior() = runBlocking {
+        val products = database.products()
+        val product = Product("Beras", 10_000, 8, 2, "001234")
+        val id = products.insert(product)
+        products.insert(Product("Barang arsip", 10_000, 8, 2, "000999", archived = true))
+        val inventory = InventoryViewModel(products)
+
+        inventory.openSearchScanner()
+        assertEquals(BarcodeLookupResult.NotFound, inventory.applyScannedBarcode("000456"))
+        assertNull(inventory.form.value)
+        assertEquals(BarcodeLookupResult.Handled, inventory.applyScannedBarcode("001234"))
+        assertEquals(id, inventory.form.value?.productId)
+        inventory.closeScanner()
+        inventory.closeForm()
+
+        inventory.openForm()
+        inventory.changeForm { copy(name = "Barang baru", price = "15000", stock = "4", minimumStock = "1") }
+        val draft = checkNotNull(inventory.form.value)
+        inventory.openFormScanner()
+        assertEquals(BarcodeLookupResult.Handled, inventory.applyScannedBarcode("000456"))
+        inventory.closeScanner()
+        assertEquals(draft.copy(barcode = "000456"), inventory.form.value)
+
+        inventory.openFormScanner()
+        assertEquals(BarcodeLookupResult.Archived, inventory.applyScannedBarcode("000999"))
+        assertEquals(draft.copy(barcode = "000456"), inventory.form.value)
+        assertEquals(BarcodeLookupResult.Handled, inventory.applyScannedBarcode("001234"))
+        val edit = checkNotNull(inventory.form.value)
+        assertEquals(id, edit.productId)
+        assertEquals(product.name, edit.name)
+        assertEquals("001234", edit.barcode)
+        assertEquals(listOf(product.copy(id = id)), products.observeProducts().first())
+    }
+
+    @Test fun archivedProductCanBeRestoredWithoutLosingProductOrReceipt() {
         val original = Product("Beras arsip", 10_000, 3, 3, "000555")
         val other = Product("Kopi aktif", 12_000, 8, 2, "000666")
         val archivedProduct = runBlocking { original.copy(id = database.products().insert(original)) }
@@ -281,6 +317,27 @@ class InventoryCheckpointTest {
             assertEquals("Beras arsip", item.productName)
             assertEquals(10_000L, item.priceRupiah)
             assertEquals(1, item.quantity)
+        }
+
+        compose.onNodeWithText("Arsip").performClick()
+        awaitText("Barang arsip")
+        awaitText(archivedProduct.name)
+        compose.onNodeWithText("Barcode: 000555").assertIsDisplayed()
+        compose.onNodeWithText("Pulihkan").performClick()
+        awaitText("Tidak ada barang yang diarsipkan.")
+        backToCatalog()
+        awaitText(archivedProduct.name)
+        compose.onNodeWithText(archivedProduct.name).assertIsDisplayed()
+
+        val restored = archivedProduct.copy(stock = 2)
+        runBlocking {
+            val products = database.products()
+            assertEquals(listOf(activeProduct, restored), products.observeProducts().first())
+            assertEquals(restored, products.findByBarcode("000555"))
+            assertEquals(listOf(restored), RestockViewModel(products.observeProducts()).lowStockProducts.first())
+            val receipt = checkNotNull(database.sales().findReceipt(sale.id))
+            assertEquals(archivedProduct.id, receipt.items.single().productId)
+            assertEquals("10000", receipt.sale.totalRupiah)
         }
     }
 }

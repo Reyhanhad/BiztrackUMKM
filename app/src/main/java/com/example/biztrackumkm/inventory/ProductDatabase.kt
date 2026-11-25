@@ -35,6 +35,9 @@ internal interface ProductDao {
     @Query("SELECT * FROM products WHERE archived = 0 ORDER BY id DESC")
     fun observeProducts(): Flow<List<Product>>
 
+    @Query("SELECT * FROM products WHERE archived = 1 ORDER BY id DESC")
+    fun observeArchivedProducts(): Flow<List<Product>>
+
     // Lookup inventaris juga mengenali kode yang dicadangkan oleh produk arsip.
     @Query("SELECT * FROM products WHERE barcode = :barcode LIMIT 1")
     suspend fun findByBarcode(barcode: String): Product?
@@ -59,6 +62,9 @@ internal interface ProductDao {
 
     @Query("UPDATE products SET archived = 1 WHERE id = :id AND archived = 0")
     suspend fun archive(id: Long): Int
+
+    @Query("UPDATE products SET archived = 0 WHERE id = :id AND archived = 1")
+    suspend fun restoreArchivedProduct(id: Long)
 }
 
 @Database(
