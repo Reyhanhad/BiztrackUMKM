@@ -130,6 +130,8 @@
     <string name="checkout_product_unavailable">Ada produk yang tidak lagi tersedia. Periksa keranjang sebelum mencoba lagi.</string>
     <string name="checkout_storage_error">Tidak bisa menyimpan penjualan. Stok tidak berubah. Coba lagi.</string>
     <string name="checkout_done">OK</string>
+    <string name="nav_home">Beranda</string>
+    <string name="nav_report">Laporan</string>
     <string name="dashboard_title">Dashboard harian</string>
     <string name="dashboard_revenue">Omzet hari ini</string>
     <string name="dashboard_transactions">Jumlah transaksi</string>
