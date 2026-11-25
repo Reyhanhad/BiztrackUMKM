@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,7 +31,7 @@ internal fun RestockScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(stringResource(R.string.restock_title))
+                    Text(stringResource(R.string.restock_priority_title))
                 },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
@@ -92,6 +93,14 @@ internal fun RestockScreen(
                     color = MaterialTheme.colorScheme.error
                 )
 
+                Text(
+                    text = stringResource(
+                        R.string.restock_priority_subtitle
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -110,25 +119,73 @@ internal fun RestockScreen(
 @Composable
 private fun LowStockProductCard(product: Product) {
 
+    val priority = product.restockPriority()
     val isOutOfStock = product.stock == 0
 
-    val statusColor = if (isOutOfStock) {
-        MaterialTheme.colorScheme.error
-    } else {
-        MaterialTheme.colorScheme.primary
+    val colors = MaterialTheme.colorScheme
+
+    val priorityColor = when (priority) {
+        RestockPriority.HIGH -> colors.error
+        RestockPriority.MEDIUM -> colors.tertiary
+        RestockPriority.LOW -> colors.primary
     }
+
+    val priorityContainer = when (priority) {
+        RestockPriority.HIGH -> colors.errorContainer
+        RestockPriority.MEDIUM -> colors.tertiaryContainer
+        RestockPriority.LOW -> colors.primaryContainer
+    }
+
+    val priorityContentColor = when (priority) {
+        RestockPriority.HIGH -> colors.onErrorContainer
+        RestockPriority.MEDIUM -> colors.onTertiaryContainer
+        RestockPriority.LOW -> colors.onPrimaryContainer
+    }
+
+    val priorityLabel = when (priority) {
+        RestockPriority.HIGH -> R.string.restock_priority_high
+        RestockPriority.MEDIUM -> R.string.restock_priority_medium
+        RestockPriority.LOW -> R.string.restock_priority_low
+    }
+
+    val priorityHint = when (priority) {
+        RestockPriority.HIGH -> R.string.restock_priority_high_hint
+        RestockPriority.MEDIUM -> R.string.restock_priority_medium_hint
+        RestockPriority.LOW -> R.string.restock_priority_low_hint
+    }
+
+    val stockProgress = product.restockRatio()
+        .coerceIn(0.0, 1.0)
+        .toFloat()
 
     OutlinedCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
                 text = product.name,
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
             )
+
+            Surface(
+                color = priorityContainer,
+                contentColor = priorityContentColor,
+                shape = MaterialTheme.shapes.small
+            ) {
+                Text(
+                    text = stringResource(priorityLabel),
+                    modifier = Modifier.padding(
+                        horizontal = 12.dp,
+                        vertical = 6.dp
+                    ),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
 
             Text(
                 text = stringResource(
@@ -138,7 +195,7 @@ private fun LowStockProductCard(product: Product) {
                         R.string.restock_status_low
                     }
                 ),
-                color = statusColor,
+                color = priorityColor,
                 style = MaterialTheme.typography.labelLarge
             )
 
@@ -158,11 +215,18 @@ private fun LowStockProductCard(product: Product) {
                 )
             )
 
+            LinearProgressIndicator(
+                progress = { stockProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp),
+                color = priorityColor,
+                trackColor = colors.surfaceVariant
+            )
+
             Text(
-                text = stringResource(
-                    R.string.restock_action_hint
-                ),
-                color = statusColor,
+                text = stringResource(priorityHint),
+                color = priorityColor,
                 style = MaterialTheme.typography.bodySmall
             )
         }
